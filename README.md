@@ -32,10 +32,10 @@ The code has been tested with the following environment:
 ------------------------------------------------------------
 
 Clone the repository:
-
+```
   git clone https://github.com/USERNAME/REPOSITORY.git
   cd REPOSITORY
-
+```
 Edit Makefile:
     MPIF90=mpifrtpx # Fortran90 compiler with MPI                               
     F90=frtpx       # Fortran90 complier
@@ -43,7 +43,9 @@ Edit Makefile:
     OMPFLG=-Kopenmp # OpenMP flag for the compiler          
     
 Compile the source files:
+```
    make
+```
 
 ------------------------------------------------------------
 4. Usage
@@ -51,19 +53,25 @@ Compile the source files:
 
 To reproduce the results of euler_maruyama method in the paper, 
 run:
+```
     export OMP_NUM_THREADS=40;                                     │
     ./euler_maruyama      
+```
 
 
 To prepare distribution records in the paper, 
 run:
+```
     export OMP_NUM_THREADS=10
     mpirun -np 10 ./record_gen
+```
 
 To reproduce the results of distribution record based method in the paper, 
 run:
+```
     export OMP_NUM_THREADS=40
     ./montecalro_w_record
+```
 
 ------------------------------------------------------------
 5. Reproducing the Results in the Paper
