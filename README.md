@@ -33,9 +33,10 @@ The code has been tested with the following environment:
 
 Clone the repository:
 ```
-  git clone https://github.com/USERNAME/REPOSITORY.git
-  cd REPOSITORY
+  git clone https://github.com/aki-f/half_sarcomere.git
+  cd half_sarcomere
 ```
+
 Edit Makefile:
 ```
     MPIF90=mpifrtpx # Fortran90 compiler with MPI                               
@@ -56,10 +57,10 @@ Compile the source files:
 To reproduce the results of euler_maruyama method in the paper, 
 run:
 ```
-    export OMP_NUM_THREADS=40;                                     │
+    export OMP_NUM_THREADS=40;                                     
     ./euler_maruyama      
 ```
-
+In Euler Maruyama method, time step width is 0.5 ns. In order to shorten the execution time, the simulation time length is set to 0.02 sec.
 
 To prepare distribution records in the paper, 
 run:
@@ -67,6 +68,10 @@ run:
     export OMP_NUM_THREADS=10
     mpirun -np 10 ./record_gen
 ```
+Distribution records are stored in the dist_records directory.
+The distribution of myosin behavior is measured over 1,000 trials for each initial condition.
+Parallelism is implemented using multi-threading for trials and multi-processing for the various initial conditions.
+
 
 To reproduce the results of distribution record based method in the paper, 
 run:
@@ -74,6 +79,10 @@ run:
     export OMP_NUM_THREADS=40
     ./montecalro_w_record
 ```
+In distribution record based method, time step width is set to be 1000 ns with distribution records.
+The simulation time length is set to 1.0 sec.
+
+The number of threads and processes can be adjusted to suit your computing environment.
 
 ------------------------------------------------------------
 5. Reproducing the Results in the Paper
