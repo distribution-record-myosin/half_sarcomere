@@ -33,7 +33,7 @@ The code has been tested with the following environment:
 
 Clone the repository:
 ```
-  git clone https://github.com/aki-f/half_sarcomere.git
+  git clone https://github.com/distribution-record-myosin/half_sarcomere.git
   cd half_sarcomere
 ```
 
