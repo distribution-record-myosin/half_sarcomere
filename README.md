@@ -37,10 +37,12 @@ Clone the repository:
   cd REPOSITORY
 ```
 Edit Makefile:
+```
     MPIF90=mpifrtpx # Fortran90 compiler with MPI                               
     F90=frtpx       # Fortran90 complier
     OPTFLG=-Kfast   # optimization flag     
     OMPFLG=-Kopenmp # OpenMP flag for the compiler          
+```
     
 Compile the source files:
 ```
