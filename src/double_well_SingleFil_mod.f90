@@ -1,15 +1,10 @@
 program double_well_test
   implicit none
   include 'param.inc'
-!C  integer, parameter :: np = 800
-!C  integer, parameter :: np = 5040
-!C  integer, parameter :: np = 10080
-!C  integer, parameter :: np = 20160
   integer, parameter :: np = 40320
   logical, parameter :: SI_Switch = .false.
   integer, parameter :: SwitchZupdate = 2
   !integer, parameter :: SwitchZupdate = 21
-!   integer, parameter :: SampleSwitch = 31
 !C in parac.inc  integer, parameter :: SampleSwitch = 3
   !Energy Parameters
   real(8), parameter :: KB_T = 0.0138 * 310                !pN*nm Boltzmann Constact x Temparature
@@ -17,84 +12,39 @@ program double_well_test
   real(8), parameter :: c_pre = 8.0, c_pos = 8.0           !pN/nm Curvature of the two wells
   real(8), parameter :: E_pre = 0.7*E_ATP, E_pos = 0.0     !pN*nm Assuming 70% of E_ATP is used for powerstroke
   real(8), parameter :: x_pre = 0.0, x_pos = 8.5           !nm    Levearm end position
-  !org  real(8), parameter :: delta = 4.0*KB_T                   !pN*nm Barrier relaxation
   real(8), parameter :: delta = 2.0*KB_T                   !pN*nm Barrier relaxation
   real(8), parameter :: omega_stiff = 1.0, c_minus = 2.5   !Unitless Stiffness coefficient
   real(8), parameter :: k_spring = 2.8                     !pN/nm Spring
   real(8), parameter :: x_shift0 = 0.0                     !nm   Spring energy = 0.5*k_spring*(x_shift+x)
-  !C 1/2 kspring xpos**2 == E_ATP　ATP加水分解のエネルギー
-
   real(8) :: x_barrier
+  
   !Friction
   real(8), parameter :: fric_x = 80.0 !pN*ns/nm  friction for leverarm rotation
   real(8), parameter :: fric_d = 80.0 !pN*ns/nm  friction for x_shift during detachment
   real(8), parameter :: x_min_detach = -10.0
+  
   !Transition
   real(8), parameter :: a_trans = 500, d_trans = 5000, g_trans=100  !1/s Transition rate constants
+  
   !Sarcomere (per one active filament(AF))
   real(8) :: z                                             !nm Contraction distance
   real(8) :: FzPerAF                                       !pN Contraction Force per one AF
-!C  integer, parameter :: nM = 20                            !Number of myosins per one AF
   integer, parameter :: nM = 80                            !Number of myosins per one AF
   real(8), parameter :: gamma_sarco = 1.d-5                !pN*s/nm Viscosity per one AF
-!C  real(8), parameter :: kZ = 0.5                           !pN/nm   Spring constant per one AF
   real(8), parameter :: kZ = 8.0                           !pN/nm   Spring constant per one AF
   !Time step
   real(8), parameter :: dict_dt = 0.5
-  !real(8), parameter :: dt = 0.5   !ns less than fric_x/max(c_pre,c_pos)
-  !integer, parameter :: nt_in = 200000, nt_out = 10000
-  !integer, parameter :: nt_in = 20000, nt_out = 500000  !Fine record
-  !dt = 1.0
-  !  real(8), parameter :: dt = 1.0   !ns less than fric_x/max(c_pre,c_pos)
-  !  integer, parameter :: nt_in = 100000, nt_out = 10000
-  !dt = 2.0
-  !  real(8), parameter :: dt = 2.0   !ns less than fric_x/max(c_pre,c_pos)
-  !  integer, parameter :: nt_in = 50000, nt_out = 10000
-  !dt = 10.0
-  !  real(8), parameter :: dt =  10.0   !ns less than fric_x/max(c_pre,c_pos)
-  !  integer, parameter :: nt_in = 10000, nt_out = 10000
-  
-!  real(8), parameter :: dt =  100.0   !ns less than fric_x/max(c_pre,c_pos)
-!  integer, parameter :: nt_in = 100, nt_out = 100000
-!  integer, parameter :: nt_in = 1000, nt_out = 10000
-  
-  !real(8), parameter :: dt =  500.0   !ns less than fric_x/max(c_pre,c_pos)
-  !integer, parameter :: nt_in = 200, nt_out = 10000  
 
   real(8) :: dt   !ns less than fric_x/max(c_pre,c_pos)
   integer :: nt_in, nt_out
 
- !real(8), parameter :: dt =  1000.0   !ns less than fric_x/max(c_pre,c_pos)
- !integer, parameter :: nt_in = 100, nt_out = 10000
- !integer, parameter :: nt_in = 100, nt_out = 5000
- 
- !real(8), parameter :: dt =  700.0   !ns less than fric_x/max(c_pre,c_pos)
- !integer, parameter :: nt_in = 100, nt_out = 10000
-
-!  real(8), parameter :: dt =  2000.0   !ns less than fric_x/max(c_pre,c_pos)
-!  integer, parameter :: nt_in = 50, nt_out = 10000  
-
-!  real(8), parameter :: dt =  5000.0   !ns less than fric_x/max(c_pre,c_pos)
-!  integer, parameter :: nt_in = 20, nt_out = 10000  
-
-!  real(8), parameter :: dt =  20000.0   !ns less than fric_x/max(c_pre,c_pos)
-!  integer, parameter :: nt_in = 5, nt_out = 10000  
-
-!  real(8), parameter :: dt =  25000.0   !ns less than fric_x/max(c_pre,c_pos)
-!  integer, parameter :: nt_in = 4, nt_out = 10000  
-!
-!  real(8), parameter :: dt =  50000.0   !ns less than fric_x/max(c_pre,c_pos)
-!  integer, parameter :: nt_in = 2, nt_out = 10000  
-
-!  real(8), parameter :: dt =  100000.0   !ns less than fric_x/max(c_pre,c_pos)
-!  integer, parameter :: nt_in = 1, nt_out = 10000  
-
-
   integer :: it_out, it_in
   real(8) :: total_time
+  
   !Random Force
   integer, parameter :: NP_RandomForce = 10000000
   real(8) :: RandomForceArray(NP_RandomForce)
+
   !Statistical Data
   integer :: npre, npos, ndet
   real(8) :: NattachPerMol, Ndeatch_prePerMol, Ndeatch_posPerMol
@@ -107,51 +57,35 @@ program double_well_test
   integer :: RndForceSeedArray(np)  ! random force seeds
   integer :: RndStateSeedArray(np)  ! state transition seeds
   
-  integer, parameter :: dict_psz = 1000 ! 各ファイルに含まれる数値の数
-  ! integer, parameter :: dict_2d_xlowb = -7
-  ! integer, parameter :: dict_2d_xupb = 13
-  ! integer, parameter :: dict_2d_xsz = 30   ! 読み込むファイル数 (適宜変更)      
-  ! integer, parameter :: dict_2d_slowb = -19
-  ! integer, parameter :: dict_2d_supb = 20
-  ! integer, parameter :: dict_2d_shift_sz = 40   ! 読み込むファイル数 (適宜変更)
+  integer, parameter :: dict_psz = 1000 
   !C in parac.inc integer, parameter :: dict_2d_xlowb = -7
   !C in parac.inc integer, parameter :: dict_2d_xupb = 14
-  !C in parac.inc integer, parameter :: dict_2d_xsz = 100   ! 読み込むファイル数 (適宜変更)      
+  !C in parac.inc integer, parameter :: dict_2d_xsz = 100   
   !C in parac.inc integer, parameter :: dict_2d_slowb = -19
   !C in parac.inc integer, parameter :: dict_2d_supb = 23
-  !C in parac.inc integer, parameter :: dict_2d_shift_sz = 200   ! 読み込むファイル数 (適宜変更)
+  !C in parac.inc integer, parameter :: dict_2d_shift_sz = 200 
   !C in parac.inc integer, parameter :: dict_1d_xlowb = -6
   !C in parac.inc integer, parameter :: dict_1d_xupb = 6
   !C in parac.inc integer, parameter :: dict_1d_xsz = 100
 
   !C in parac.inc integer, parameter :: dictp_2d_xlowb = -3
   !C in parac.inc integer, parameter :: dictp_2d_xupb = 10
-  !C in parac.inc integer, parameter :: dictp_2d_xsz = 200   ! 読み込むファイル数 (適宜変更)      
+  !C in parac.inc integer, parameter :: dictp_2d_xsz = 200
   !C in parac.inc integer, parameter :: dictp_2d_slowb = -3
   !C in parac.inc integer, parameter :: dictp_2d_supb = 3
-!C  integer, parameter :: dictp_2d_slowb = -2
-!C  integer, parameter :: dictp_2d_supb = 2
-!C  integer, parameter :: dictp_2d_shift_sz = 200   ! 読み込むファイル数 (適宜変更)
-!C  integer, parameter :: dictp_2d_shift_sz = 300   ! 読み込むファイル数 (適宜変更)
-  !C in parac.inc integer, parameter :: dictp_2d_shift_sz = 30   ! 読み込むファイル数 (適宜変更)
-
 
   real(8) :: dict_2d(dict_psz, dict_2d_xsz, dict_2d_shift_sz)
-!  real(8) :: dict_2d_band(dict_2d_xsz, dict_2d_shift_sz)
-  real(8) :: dict_2d_ave(dict_2d_xsz, dict_2d_shift_sz)
 
   real(8) :: dict_1d(dict_psz, dict_1d_xsz)
-!  real(8) :: dict_1d_band(dict_1d_xsz)  
   real(8) :: dict_1d_ave(dict_1d_xsz)  
 
   real(8) :: dictp_2d(dict_psz, dictp_2d_xsz, dictp_2d_shift_sz)
-! 
 
   !C-- SwitchZupdate == 4
   real(8) :: zdot_p, zdot, gamma
 
   dt = real(time,kind=8)
-  nt_in  = 100000/time !C output every 100000 ns
+  nt_in  = 100000/time           !C output every 100000 ns
   nt_out = 10000.0*(time/1000.0) !C 10^9 ns
 
   if(SwitchZupdate==4) then
@@ -159,29 +93,19 @@ program double_well_test
     gamma = 0.9
   end if
   
-  !--
-  ! integer :: index1, index2, index3
-  ! real(8) :: v
-
-  ! write(*,*) "hoehoe"
   call read_files(int(dt))
-!  write(*,*) maxval(dict_2d_band), "hoho"
-
 
   call draw_powerstroke_potential()
   call initialize()
   call initRandomForce()
 
-
   do it_out = 1, nt_out
-!C  do it_out = 1, 52819 !C ---
     total_time = it_out*dt*nt_in
     do it_in = 1, nt_in
       call simu_force_random()
       call simu_force_powerstroke()
       call simu_update()
       call simu_state_trans()
-!C      if(it_out>51319) write(22,'(3e13.5)') z, maxval(x_shift),minval(x_shift)!C --- itout: 51319...52819の出力
     end do
     call get_StatisticalData()
     write(6,'("it_out,time[s],npre,npos,Trans(3),z,F=",i8,e13.5,3i8,5e13.5)') it_out,1.d-9*total_time,npre,npos,ndet,&
@@ -189,11 +113,11 @@ program double_well_test
     if (it_out == 1) then
       open(20,file="trans.csv")
       open(21,file="data.bin",form="unformatted")
-!C      open(22,file="debug.csv")!C --- 
     else
       open(20,file="trans.csv",position="append")
       open(21,file="data.bin",position="append",form="unformatted")
-    end if
+   end if
+   
     write(20,'(i8,10e13.5)') it_out,1.d-9*total_time,dble(npre)/dble(np),dble(npos)/dble(np),dble(ndet)/dble(np),&
        NattachPerMol,Ndeatch_prePerMol,Ndeatch_posPerMol,z,FzPerAF
     close(20)
@@ -206,120 +130,9 @@ program double_well_test
     end if 
    close(21)
   end do
-!C  close(22)!C ---   
   
 contains
   
-  subroutine sample(v, vector, ave,i)
-    implicit none
-    real(8), intent(inout) :: v
-    real(8), dimension(:)  :: vector
-    real(8), intent(in) :: ave
-    real(8) :: rnd, m
-    integer, intent(in) :: i
-    integer :: index,ir
-    real(8) :: unifrd
-    rnd = unifrd(RndForceSeedArray(i))
-    index = max(min(int(rnd*dict_psz+1),dict_psz),1)
-    m =vector(index)
-!    rnd = unifrd(RndForceSeedArray(1))
-!    ir = max(int(rnd * NP_RandomForce), 1)
-!    v = m+haba*RandomForceArray(ir)
-    v = v + m
-  end subroutine sample
-
-  subroutine sample_w_shift(v, vector, xlowb, xupb, dx, index, dict_ave, i)
-    implicit none
-    real(8), intent(inout) :: v
-    real(8), dimension(:)  :: vector, dict_ave
-    real(8), intent(in) :: xlowb, xupb, dx
-    real(8) :: hosei, deltax
-    real(8) :: rnd, m
-    integer :: index,ir,dindex,ind
-    integer, intent(in) :: i
-    real(8) :: unifrd
-
-    if (v < xlowb .or. v >= xupb) then
-      hosei = 0
-    else
-      !C ind is set as (ind-1)th sampling point < x(i) < ind th sampling point
-      if (xlowb + dx*(index-1) > v) then
-        ind = index
-      else
-        ind = index+1
-      end if
-      deltax = v-(xlowb + dx*(ind-2))
-!C    hosei = (1-deltax/dx)*dict_2d_ave(ind-1) + deltax/dx*(dict_2d_ave(ind)+dx) - deltax - dict_2d_ave(ind)
-      hosei = (1-deltax/dx)*dict_ave(ind-1) + (deltax/dx-1)*dict_ave(ind) 
-    end if
-
-    rnd = unifrd(RndForceSeedArray(i))
-    dindex = max(min(int(rnd*dict_psz+1),dict_psz),1)
-    m =vector(dindex)
-!    rnd = unifrd(RndForceSeedArray(1))
-!    ir = max(int(rnd * NP_RandomForce), 1)
-!    v = m+haba*RandomForceArray(ir)
-    v = v + m + hosei
-
-  end subroutine sample_w_shift
-
-  subroutine sample_2d_w_shift(x, s, vector, xlowb, xupb, dx, index1, slowb, supb, ds, index2, dict_ave, i)
-    implicit none
-    real(8), intent(inout)  :: x
-    real(8), intent(in)     :: s
-    real(8), dimension(:)   :: vector
-    real(8), dimension(:,:) :: dict_ave
-    real(8), intent(in) :: xlowb, xupb, dx
-    real(8), intent(in) :: slowb, supb, ds    
-    real(8) :: hosei, deltax, deltas, save1, save2
-    real(8) :: rnd, m, w_0_0,w_0_1,w_1_0,w_1_1
-    integer, intent(in) :: index1, index2,i
-    integer :: index,ir,dindex,xind,sind
-    real(8) :: unifrd
-
-    if(s>=slowb .and. s<supb) then
-      if (slowb + ds*(index2-1) > s) then
-        sind = index2
-      else
-        sind = index2+1
-      end if
-      deltas = s-(slowb + ds*(sind-2))      
-    end if
-
-    if(x>=xlowb .and. x<xupb) then
-      if (xlowb + dx*(index1-1) > x) then
-        xind = index1
-      else
-        xind = index1+1
-      end if
-      deltax = x-(xlowb + dx*(xind-2))      
-    end if
-
-    if((s < slowb .or. s >= supb) .and. (x < xlowb .or. x >= xupb)) then !C points out of range in both directions
-      hosei = 0
-    else if(s >= slowb .and. s < supb .and. x >= xlowb .and. x<xupb) then !C points in the range of both directions
-      save1 = (1-deltas/ds)*dict_ave(xind-1,sind-1) + deltas/ds*dict_ave(xind-1, sind)
-      save2 = (1-deltas/ds)*dict_ave(xind,  sind-1) + deltas/ds*dict_ave(xind,   sind)      
-
-!C    hosei = (1-deltax/dx)*dict_2d_ave(ind-1) + deltax/dx*(dict_2d_ave(ind)+dx) - deltax - dict_2d_ave(ind)
-!C    hosei = (1-deltax/dx)*save1 +  deltax/dx*(save2+dx) - deltax - dict_ave(index1,index2)
-      hosei = (1-deltax/dx)*save1 +  deltax/dx*save2 - dict_ave(index1,index2)
-    else if(x >= xlowb .and. x<xupb) then !C points out of range in x_shift
-      save1 = dict_ave(xind-1,index2)
-      save2 = dict_ave(xind,  index2)
-      hosei = (1-deltax/dx)*save1 + deltax/dx*save2 - dict_ave(index1, index2)
-    else                            !C points out of range in x
-      save1 = (1-deltas/ds)*dict_ave(index1,sind-1) + deltas/ds*dict_ave(index1, sind)
-      hosei = save1 - dict_ave(index1,index2)
-    end if
-
-    rnd = unifrd(RndForceSeedArray(i))
-    dindex = max(min(int(rnd*dict_psz+1),dict_psz),1)
-    m =vector(dindex)
-    x = x + m + hosei
-
-  end subroutine sample_2d_w_shift
-
   subroutine sample_2d(x, s, dict_2d, xlowb, xupb, dx, index1, slowb, supb, ds, &
     & index2, i, xsz, shift_sz)
     implicit none
@@ -398,22 +211,11 @@ contains
 
     rnd = unifrd(RndForceSeedArray(i))
     dindex     = max(min(int(rnd*dict_psz+1), dict_psz),1)
-
-    !C debug---    
-    if(dict_index1<=0 .or. dict_index1>xsz) then
-      write(*,*) "dict_index1,x,xlowb,xupb,dx,xsz", dict_index1, x,xlowb,xupb,dx,xsz
-    end if
-    if(dict_index2<=0 .or. dict_index2>shift_sz) then
-      write(*,*) "dict_index2,x,xlowb,xupb,dx,ssz", dict_index2, s,slowb,supb,ds,shift_sz
-    end if
-    !C debug---        
-
     dict_index1= max(min(dict_index1,xsz),1)
     dict_index2= max(min(dict_index2,shift_sz),1)    
     m =dict_2d(dindex,dict_index1, dict_index2)
     x = x + m
   end subroutine sample_2d
-
 
   subroutine sample_1d(x, dict_1d, xlowb, xupb, dx, index, i)
     implicit none
@@ -467,17 +269,17 @@ contains
     real(8), intent(in) :: x, lowb, upb
     real(8) :: step
 
-        ! ステップ幅を計算
+    ! step width
     step = (upb - lowb) / dble(xsz - 1)
 
-        ! x の範囲チェック
+    ! range check
     if (x <= lowb) then
         index = 1
     else if (x >= upb) then
         index = xsz
     else
-        ! 直接 index を計算
-        index = int((x - lowb) / step + 1.5)
+      ! index calculation
+      index = int((x - lowb) / step + 1.5)
     end if
   end subroutine index_determine
 
@@ -488,7 +290,6 @@ contains
     character(len=100) :: filename
     real(8) :: dx, v
     
-    ! すべてのファイルをループして読み込む
     write(filename, '(A,I0,A,I0,A,I0,A,I0,A,I0,A,I0,A,I0,A)') 'dist_records/dict1000_0.5_',&
       & time,'_',dict_2d_xlowb, '_',dict_2d_xupb,'_',dict_2d_xsz,'_',dict_2d_slowb,'_',dict_2d_supb,&
       & '_',dict_2d_shift_sz,'.csv'  
@@ -526,44 +327,25 @@ contains
     read(10) dictp_2d(:,:,:)
     close(10)
 
+    !C each arrays store the coordinate at the end of the specified duration.
+    !C They are changed to displacement by subtractin the initial coordinate.
     dx = (dict_2d_xupb - dict_2d_xlowb) / dble(dict_2d_xsz-1)
     do i = 0, dict_2d_shift_sz-1    
       do j = 0, dict_2d_xsz-1
-        !C--
         dict_2d(:, j+1, i+1) = dict_2d(:, j+1, i+1) - (dict_2d_xlowb+dx*j)
-        v=0.0
-        do k=1, dict_psz
-          v = v+dict_2d(k,j+1,i+1)
-        end do
-        dict_2d_ave(j+1,i+1)=v/dble(dict_psz)
-        !C--        
       end do
     end do
 
     dx = (dict_1d_xupb - dict_1d_xlowb) / dble(dict_1d_xsz-1)
-    ! すべてのファイルをループして読み込む
     do j = 0, dict_1d_xsz-1
-      !C--
       dict_1d(:, j+1) = dict_1d(:, j+1) - (dict_1d_xlowb + dx*j)
-      v=0.0
-      do k=1, dict_psz
-        v = v+dict_1d(k,j+1)
-      end do
-      dict_1d_ave(j+1)=v/dble(dict_psz)
-      !C--        
     end do
 
 
     dx = (dictp_2d_xupb - dictp_2d_xlowb) / dble(dictp_2d_xsz-1)
     do i = 0, dictp_2d_shift_sz-1    
       do j = 0, dictp_2d_xsz-1
-        !C--
         dictp_2d(:, j+1, i+1) = dictp_2d(:, j+1, i+1) - (dictp_2d_xlowb+dx*j)
-!C        v=0.0
-!C        do k=1, dict_psz
-!C          v = v+dictp_2d(k,j+1,i+1)
-!C        end do
-!C        dict_2d_ave(j+1,i+1)=v/dble(dict_psz)
       end do
     end do
 
@@ -844,7 +626,7 @@ contains
 
 !$omp parallel do default(none) &
 !$omp private(i,coef,vel,index1,index2,index3,it_dt) &
-!$omp shared(force,force_random,x,state,x_shift,dict_2d,dict_2d_ave) &
+!$omp shared(force,force_random,x,state,x_shift,dict_2d) &
 !$omp shared(dx_2d,ds_2d,dict_1d,dict_1d_ave,dx_1d) &
 !$omp shared(dx_p2d,ds_p2d,dictp_2d,dt) &
 !$omp reduction(+:fz,na)
@@ -858,35 +640,29 @@ contains
         call index_determine(index1, x(i),       real(dict_2d_xlowb,kind=8), real(dict_2d_xupb,kind=8), dict_2d_xsz)
         call index_determine(index2, x_shift(i), real(dict_2d_slowb,kind=8), real(dict_2d_supb,kind=8), dict_2d_shift_sz)  
 
-        if(SampleSwitch == 1) then !C nearest distribution record is used
-            call sample(x(i), dict_2d(:,index1,index2), dict_2d_ave(index1, index2),i)
-        else if(SampleSwitch == 2) then !C nearest record is shifted to match average of neighboring records before sampling
-            call sample_2d_w_shift(x(i), x_shift(i), dict_2d(:,index1,index2),         &
-              &      dble(dict_2d_xlowb), dble(dict_2d_xupb), dx_2d, index1,             &
-              &      dble(dict_2d_slowb), dble(dict_2d_supb), ds_2d, index2, dict_2d_ave, i) 
-        else if(SampleSwitch == 3) then !C weighted sampling with probabilistic record switching
-            call sample_2d(x(i), x_shift(i), dict_2d,                          &
-              & dble(dict_2d_xlowb), dble(dict_2d_xupb), dx_2d, index1,      &
-              & dble(dict_2d_slowb), dble(dict_2d_supb), ds_2d, index2,i,    &
+        if(SampleSwitch == 3) then !C weighted sampling with probabilistic record switching
+            call sample_2d(x(i), x_shift(i), dict_2d,                              &
+              & dble(dict_2d_xlowb), dble(dict_2d_xupb), dx_2d, index1,            &
+              & dble(dict_2d_slowb), dble(dict_2d_supb), ds_2d, index2,i,          &
               & dict_2d_xsz, dict_2d_shift_sz)
         else if(SampleSwitch == 31) then !C in addition, precise record is added.
           if(x(i) >= dictp_2d_xlowb .and. x(i) <= dictp_2d_xupb .and. &
               & x_shift(i) >= dictp_2d_slowb .and. x_shift(i) <= dictp_2d_supb) then
-            call index_determine(index1, x(i),       real(dictp_2d_xlowb,kind=8), &
+            call index_determine(index1, x(i),       real(dictp_2d_xlowb,kind=8),  &
               &   real(dictp_2d_xupb,kind=8), dictp_2d_xsz)
-            call index_determine(index2, x_shift(i), real(dictp_2d_slowb,kind=8), &
+            call index_determine(index2, x_shift(i), real(dictp_2d_slowb,kind=8),  &
               &   real(dictp_2d_supb,kind=8), dictp_2d_shift_sz)  
 
-            call sample_2d(x(i), x_shift(i), dictp_2d,                          &
+            call sample_2d(x(i), x_shift(i), dictp_2d,                             &
                 & dble(dictp_2d_xlowb), dble(dictp_2d_xupb), dx_p2d, index1,       &
                 & dble(dictp_2d_slowb), dble(dictp_2d_supb), ds_p2d, index2,i,     &
                 & dictp_2d_xsz, dictp_2d_shift_sz)
           else
-            call sample_2d(x(i), x_shift(i), dict_2d,                          &
+            call sample_2d(x(i), x_shift(i), dict_2d,                              &
                 & dble(dict_2d_xlowb), dble(dict_2d_xupb), dx_2d, index1,          &
-                & dble(dict_2d_slowb), dble(dict_2d_supb), ds_2d, index2,i,       &
+                & dble(dict_2d_slowb), dble(dict_2d_supb), ds_2d, index2,i,        &
                 & dict_2d_xsz, dict_2d_shift_sz)
-          endif
+         endif
         else
           write(*,*) "Unknown Switch:",SampleSwitch
           stop
@@ -897,15 +673,8 @@ contains
 
       else
         coef = sqrt(2.0*fric_d*KB_T/dt)
-!          vel = (1.d0/fric_d)*(force(i) + coef*force_random(i))
-!          x_shift(i) = x_shift(i) + dt*vel
         call index_determine(index3, x_shift(i), real(dict_1d_xlowb,kind=8), real(dict_1d_xupb,kind=8), dict_2d_xsz)
-        if(SampleSwitch == 1) then
-            call sample(x_shift(i),dict_1d(:,index3),dict_1d_ave(index3), i)
-        else if(SampleSwitch == 2) then 
-            call sample_w_shift(x_shift(i),dict_1d(:,index3), dble(dict_1d_xlowb), dble(dict_1d_xupb), &
-            &       dx_1d, index3, dict_1d_ave(:),i)
-        else if(SampleSwitch == 3 .or. SampleSwitch==31) then
+        if(SampleSwitch == 3 .or. SampleSwitch==31) then
             call sample_1d(x_shift(i), dict_1d, dble(dict_1d_xlowb), dble(dict_1d_xupb), &
               &      dx_1d, index3, i)
         else 

@@ -30,31 +30,10 @@ program double_well_test
   integer, parameter :: nM = 20                            !Number of myosins per one AF
   real(8), parameter :: gamma_sarco = 1.d-5                !pN*s/nm Viscosity per one AF
   real(8), parameter :: kZ = 0.5                           !pN/nm   Spring constant per one AF
-  !Time step
-  !dt = 0.5
-!  integer, parameter :: time=2000
-!  integer, parameter :: time=500
-! integer, parameter :: time=20000
-!  integer, parameter :: time=25000
-!   integer, parameter :: time=100
-!  integer, parameter :: time=50000
-!C in param.inc  integer, parameter :: time=100000
+
+  !C in param.inc  integer, parameter :: time=100000
   real(8), parameter :: dt = 0.5   !ns less than fric_x/max(c_pre,c_pos)
-  !  integer, parameter :: nt_in = 200000, nt_out = 10000
-  !integer, parameter :: nt_in = 20000, nt_out = 500000  !Fine record
-  !integer, parameter :: nt_in = 200 
   integer, parameter :: nt_in = int(time/dt+0.1)
-!  integer, parameter :: nt_in = 1000
-  ! integer, parameter :: nt_in = 2000
-  !dt = 1.0
-  !  real(8), parameter :: dt = 1.0   !ns less than fric_x/max(c_pre,c_pos)
-  !  integer, parameter :: nt_in = 100000, nt_out = 10000
-  !dt = 2.0
-  !  real(8), parameter :: dt = 2.0   !ns less than fric_x/max(c_pre,c_pos)
-  !  integer, parameter :: nt_in = 50000, nt_out = 10000
-  !dt = 10.0
-  !  real(8), parameter :: dt =  10.0   !ns less than fric_x/max(c_pre,c_pos)
-  !  integer, parameter :: nt_in = 10000, nt_out = 10000
   integer :: it_out, it_in
   real(8) :: total_time
   !Random Force
@@ -74,10 +53,10 @@ program double_well_test
 
   !C in param.inc integer, parameter :: dict_2d_xlowb = -7
   !C in param.inc integer, parameter :: dict_2d_xupb = 14
-  !C in param.inc integer, parameter :: dict_2d_xsz = 100   ! 読み込むファイル数 (適宜変更)      
+  !C in param.inc integer, parameter :: dict_2d_xsz = 100 
   !C in param.inc integer, parameter :: dict_2d_slowb = -19
   !C in param.inc integer, parameter :: dict_2d_supb = 23
-  !C in param.inc integer, parameter :: dict_2d_shift_sz = 200   ! 読み込むファイル数 (適宜変更)
+  !C in param.inc integer, parameter :: dict_2d_shift_sz = 200
   !C in param.inc integer, parameter :: dict_1d_xlowb = -6
   !C in param.inc integer, parameter :: dict_1d_xupb = 6
   !C in param.inc integer, parameter :: dict_1d_xsz = 100
@@ -85,18 +64,11 @@ program double_well_test
 
   !C in param.inc integer, parameter :: dictp_2d_xlowb = -3
   !C in param.inc integer, parameter :: dictp_2d_xupb = 10
-  !integer, parameter :: dictp_2d_xsz = 100   ! 読み込むファイル数 (適宜変更)      
-  !C in param.inc integer, parameter :: dictp_2d_xsz = 200   ! 読み込むファイル数 (適宜変更)        
+  !integer, parameter :: dictp_2d_xsz = 100   
+  !C in param.inc integer, parameter :: dictp_2d_xsz = 200 
   !C in param.inc integer, parameter :: dictp_2d_slowb = -3
   !C in param.inc integer, parameter :: dictp_2d_supb = 3
-  !integer, parameter :: dictp_2d_slowb = -2
-  !integer, parameter :: dictp_2d_supb = 2
-!  integer, parameter :: dictp_2d_shift_sz = 300   ! 読み込むファイル数 (適宜変更)
-  !C in param.inc integer, parameter :: dictp_2d_shift_sz = 30   ! 読み込むファイル数 (適宜変更)
-
-!  real(8) :: dict_2d(dict_psz, dict_2d_xsz, dict_2d_shift_sz)  
-!  real(8) :: dict_1d(dict_psz, dict_1d_xsz)
-!  real(8) :: dictp_2d(dict_psz, dictp_2d_xsz, dictp_2d_shift_sz)
+  !C in param.inc integer, parameter :: dictp_2d_shift_sz = 30 
 
   real(8), allocatable :: dict_2d(:, :, :)  
   real(8), allocatable :: dict_1d(:, :)
@@ -127,18 +99,18 @@ program double_well_test
   call draw_powerstroke_potential()
   call initRandomForce()
 
+  ! 1..sz is divided and j_begin..j_end is allocated to the rank.  
   sz = dict_2d_shift_sz
   lowerdimension_sz = (dict_psz*dict_2d_xsz)
 
   call set_begin_end(j_begin, j_end, local_sz, procs, sz, rank)
 
-  ! ローカル配列（nx × local_ny）を各ランクで確保
+  ! allocate local array
   allocate(local_2d(dict_psz, dict_2d_xsz, local_sz))
   allocate(sendcounts(procs), displs(procs))
 
-  ! ルートが全体配列を用意して初期化（例：A(i,j)=i+j）
+  ! root process initialize sendcounts and displs for Gatherv
   if (rank == 0) then
-     ! Scatterv/Gatherv 用の sendcounts, displs（要素数・要素オフセット）
      call set_counts_dspls(sendcounts, displs, procs, sz, lowerdimension_sz)
   end if
 
@@ -154,7 +126,7 @@ program double_well_test
         call simu_force_random()
         call simu_force_powerstroke()
         call simu_update()
-!       call simu_state_trans()
+!C       call simu_state_trans()
       end do
   
       !$omp parallel do default(none) &
@@ -172,19 +144,17 @@ program double_well_test
   deallocate(local_2d,sendcounts,displs)
 
 
-
+  ! 1..sz is divided and j_begin..j_end is allocated to the rank.
   sz = dict_1d_xsz
   lowerdimension_sz = (dict_psz)
-
   call set_begin_end(j_begin, j_end, local_sz, procs, sz, rank)
 
-  ! ローカル配列（nx × local_ny）を各ランクで確保
+  ! allocate local array
   allocate(local_1d(dict_psz, local_sz))
   allocate(sendcounts(procs), displs(procs))
 
-  ! ルートが全体配列を用意して初期化（例：A(i,j)=i+j）
+  ! root process initialize sendcounts and displs for Gatherv  
   if (rank == 0) then
-     ! Scatterv/Gatherv 用の sendcounts, displs（要素数・要素オフセット）
      call set_counts_dspls(sendcounts, displs, procs, sz, lowerdimension_sz)
   end if
 
@@ -219,17 +189,17 @@ program double_well_test
   dx=(dictp_2d_xupb-dictp_2d_xlowb)/real((dictp_2d_xsz-1),kind=8)
   ds=(dictp_2d_supb-dictp_2d_slowb)/real((dictp_2d_shift_sz-1),kind=8)  
 
-  sz = dictp_2d_shift_sz !C ??bug??
+  ! 1..sz is divided and j_begin..j_end is allocated to the rank.
+  sz = dictp_2d_shift_sz 
   lowerdimension_sz = (dict_psz*dictp_2d_xsz)
   call set_begin_end(j_begin, j_end, local_sz, procs, sz, rank)
 
-  ! ローカル配列（nx × local_ny）を各ランクで確保
+  ! allocate local array  
   allocate(local_2d(dict_psz, dictp_2d_xsz, local_sz))
   allocate(sendcounts(procs), displs(procs))
 
-  ! ルートが全体配列を用意して初期化（例：A(i,j)=i+j）
+  ! root process initialize sendcounts and displs for Gatherv    
   if (rank == 0) then
-     ! Scatterv/Gatherv 用の sendcounts, displs（要素数・要素オフセット）
      call set_counts_dspls(sendcounts, displs, procs, sz, lowerdimension_sz)
   end if
 
@@ -366,6 +336,8 @@ contains
     end if
   end subroutine draw_powerstroke_potential
 
+  !C random seed was set as different values for each case.
+  !C in_x and in_s and shift correspond to the initial condition of x_L and x_S.
   subroutine initialize(in_x,in_s,xsz,shift)
     implicit none
     integer :: i

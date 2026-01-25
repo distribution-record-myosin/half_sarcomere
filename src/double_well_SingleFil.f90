@@ -8,11 +8,10 @@ program double_well_test
   real(8), parameter :: c_pre = 8.0, c_pos = 8.0           !pN/nm Curvature of the two wells
   real(8), parameter :: E_pre = 0.7*E_ATP, E_pos = 0.0     !pN*nm Assuming 70% of E_ATP is used for powerstroke
   real(8), parameter :: x_pre = 0.0, x_pos = 8.5           !nm    Levearm end position
-  !org  real(8), parameter :: delta = 4.0*KB_T                   !pN*nm Barrier relaxation
   real(8), parameter :: delta = 2.0*KB_T                   !pN*nm Barrier relaxation
   real(8), parameter :: omega_stiff = 1.0, c_minus = 2.5   !Unitless Stiffness coefficient
   real(8), parameter :: k_spring = 2.8                     !pN/nm Spring
-  real(8), parameter :: x_S0 = 0.0                     !nm   Spring energy = 0.5*k_spring*(x_S+x_L)
+  real(8), parameter :: x_S0 = 0.0                         !nm   Spring energy = 0.5*k_spring*(x_S+x_L)
   real(8) :: x_barrier
   !Friction
   real(8), parameter :: fric_x = 80.0 !pN*ns/nm  friction for leverarm rotation
@@ -26,21 +25,10 @@ program double_well_test
   integer, parameter :: nM = 80                            !Number of myosins per one AF
   real(8), parameter :: gamma_sarco = 1.d-5                !pN*s/nm Viscosity per one AF
   real(8), parameter :: kZ = 8.0                           !pN/nm   Spring constant per one AF
+
   !Time step
-  !dt = 0.5
   real(8), parameter :: dt = 0.5   !ns less than fric_x/max(c_pre,c_pos)
-  !  integer, parameter :: nt_in = 200000, nt_out = 10000
   integer, parameter :: nt_in = 100000/dt, nt_out = 200  !Fine record
-  !integer, parameter :: nt_in = 20000, nt_out = 100000  !Fine record
-  !dt = 1.0
-  !  real(8), parameter :: dt = 1.0   !ns less than fric_x/max(c_pre,c_pos)
-  !  integer, parameter :: nt_in = 100000, nt_out = 10000
-  !dt = 2.0
-  !  real(8), parameter :: dt = 2.0   !ns less than fric_x/max(c_pre,c_pos)
-  !  integer, parameter :: nt_in = 50000, nt_out = 10000
-  !dt = 10.0
-  !  real(8), parameter :: dt =  10.0   !ns less than fric_x/max(c_pre,c_pos)
-  !  integer, parameter :: nt_in = 10000, nt_out = 10000
   integer :: it_out, it_in
   real(8) :: total_time
   !Random Force
