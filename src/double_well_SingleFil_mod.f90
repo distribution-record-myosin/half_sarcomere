@@ -15,12 +15,12 @@ program double_well_test
   real(8), parameter :: delta = 2.0*KB_T                   !pN*nm Barrier relaxation
   real(8), parameter :: omega_stiff = 1.0, c_minus = 2.5   !Unitless Stiffness coefficient
   real(8), parameter :: k_spring = 2.8                     !pN/nm Spring
-  real(8), parameter :: x_shift0 = 0.0                     !nm   Spring energy = 0.5*k_spring*(x_shift+x)
+  real(8), parameter :: x_S0 = 0.0                         !nm   Spring energy = 0.5*k_spring*(x_S+x_L)
   real(8) :: x_barrier
   
   !Friction
   real(8), parameter :: fric_x = 80.0 !pN*ns/nm  friction for leverarm rotation
-  real(8), parameter :: fric_d = 80.0 !pN*ns/nm  friction for x_shift during detachment
+  real(8), parameter :: fric_d = 80.0 !pN*ns/nm  friction for x_S during detachment
   real(8), parameter :: x_min_detach = -10.0
   
   !Transition
@@ -51,8 +51,8 @@ program double_well_test
 
   integer :: state(np)
   integer :: attach_count(np), detach_pre_count(np), detach_pos_count(np)
-  real(8) :: x(np), force(np), force_random(np)
-  real(8) :: x_shift(np)
+  real(8) :: x_L(np), force(np), force_random(np)
+  real(8) :: x_S(np)
   real(8) :: phi(np), dphi(np), d2phi(np), stiff_ps(np)
   integer :: RndForceSeedArray(np)  ! random force seeds
   integer :: RndStateSeedArray(np)  ! state transition seeds
@@ -125,18 +125,18 @@ program double_well_test
       write(21) it_out 
       write(21) z 
       write(21) state 
-      write(21) x 
-      write(21) x_shift 
+      write(21) x_L 
+      write(21) x_S 
     end if 
    close(21)
   end do
   
 contains
   
-  subroutine sample_2d(x, s, dict_2d, xlowb, xupb, dx, index1, slowb, supb, ds, &
+  subroutine sample_2d(x_L, s, dict_2d, xlowb, xupb, dx, index1, slowb, supb, ds, &
     & index2, i, xsz, shift_sz)
     implicit none
-    real(8), intent(inout)  :: x
+    real(8), intent(inout)  :: x_L
     real(8), intent(in)     :: s
     real(8), dimension(:,:,:) :: dict_2d
     real(8), intent(in) :: xlowb, xupb, dx
@@ -156,19 +156,19 @@ contains
       deltas = s-(slowb + ds*(sind-2))      
     end if
 
-    if(x>xlowb .and. x<xupb) then
-      if (xlowb + dx*(index1-1) >= x) then
+    if(x_L>xlowb .and. x_L<xupb) then
+      if (xlowb + dx*(index1-1) >= x_L) then
         xind = index1
       else
         xind = index1+1
       end if
-      deltax = x-(xlowb + dx*(xind-2))      
+      deltax = x_L-(xlowb + dx*(xind-2))      
     end if
 
-    if((s <= slowb .or. s >= supb) .and. (x <= xlowb .or. x >= xupb)) then !C points out of range in both directions
+    if((s <= slowb .or. s >= supb) .and. (x_L <= xlowb .or. x_L >= xupb)) then !C points out of range in both directions
       dict_index1=index1
       dict_index2=index2
-    else if(s > slowb .and. s < supb .and. x > xlowb .and. x<xupb) then !C points in the range of both directions
+    else if(s > slowb .and. s < supb .and. x_L > xlowb .and. x_L <xupb) then !C points in the range of both directions
       w_0_0=(1-deltax/dx)*(1-deltas/ds)
       w_0_1=(1-deltax/dx)*(deltas/ds)
       w_1_0=(deltax/dx)*(1-deltas/ds)
@@ -188,7 +188,7 @@ contains
         dict_index1=xind
         dict_index2=sind
       end if
-    else if(x > xlowb .and. x<xupb) then !C points out of range in x_shift
+    else if(x_L > xlowb .and. x_L<xupb) then !C points out of range in x_S
       w_0_0 = (1-deltax/dx)
       rnd = unifrd(RndForceSeedArray(i))
       dict_index2=index2
@@ -214,12 +214,12 @@ contains
     dict_index1= max(min(dict_index1,xsz),1)
     dict_index2= max(min(dict_index2,shift_sz),1)    
     m =dict_2d(dindex,dict_index1, dict_index2)
-    x = x + m
+    x_L = x_L + m
   end subroutine sample_2d
 
-  subroutine sample_1d(x, dict_1d, xlowb, xupb, dx, index, i)
+  subroutine sample_1d(x_L, dict_1d, xlowb, xupb, dx, index, i)
     implicit none
-    real(8), intent(inout)  :: x
+    real(8), intent(inout)  :: x_L
     real(8), dimension(:,:) :: dict_1d
     real(8), intent(in) :: xlowb, xupb, dx
     real(8) :: deltax,w_0_0,w_0_1,w_1_0,w_1_1
@@ -228,16 +228,16 @@ contains
     integer :: ir,dindex,xind,sind, dict_index
     real(8) :: unifrd
 
-    if(x>xlowb .and. x<xupb) then
-      if (xlowb + dx*(index-1) >= x) then
+    if(x_L>xlowb .and. x_L<xupb) then
+      if (xlowb + dx*(index-1) >= x_L) then
         xind = index
       else
         xind = index+1
       end if
-      deltax = x-(xlowb + dx*(xind-2))      
+      deltax = x_L-(xlowb + dx*(xind-2))      
     end if
 
-    if(x <= xlowb .or. x >= xupb) then
+    if(x_L <= xlowb .or. x_L >= xupb) then
       dict_index=index
     else
       w_0_0=(1-deltax/dx)
@@ -254,12 +254,12 @@ contains
 
     !C debug---    
     if(dict_index<=0 .or. dict_index>dict_1d_xsz) then
-      write(*,*) "dict_index,x,xlowb,xupb,dx,dict_1d_xsz", dict_index, x,xlowb,xupb,dx,dict_1d_xsz
+      write(*,*) "dict_index,x_L,xlowb,xupb,dx,dict_1d_xsz", dict_index, x_L,xlowb,xupb,dx,dict_1d_xsz
     end if
     !C debug---        
     dict_index = max(min(dict_index, dict_1d_xsz),1)
     m =dict_1d(dindex,dict_index)
-    x = x + m
+    x_L = x_L + m
   end subroutine sample_1d
 
   subroutine index_determine(index, x, lowb, upb, xsz)
@@ -349,7 +349,6 @@ contains
       end do
     end do
 
-
     print *, "Data successfully loaded."
   end subroutine read_files
 
@@ -392,8 +391,8 @@ contains
     implicit none
     integer :: i
     z = 0.d0
-    x = 0.d0
-    x_shift = x_shift0
+    x_L = 0.d0
+    x_S = x_S0
     state = 0
     attach_count = 0
     detach_pre_count = 0
@@ -455,7 +454,7 @@ contains
 
 !$omp parallel do default(none) &
 !$omp private(i,rnd)&
-!$omp shared(state,x,RndStateSeedArray,x_barrier,x_shift)&
+!$omp shared(state,x_L,RndStateSeedArray,x_barrier,x_S)&
 !$omp shared(attach_count,detach_pre_count,detach_pos_count,dt)
     do i = 1, np
       rnd = unifrd(RndStateSeedArray(i))
@@ -465,18 +464,18 @@ contains
           attach_count(i) = attach_count(i) + 1
         end if
       else
-        if (x(i) < x_barrier) then
+        if (x_L(i) < x_barrier) then
           if (rnd <= t_scale*d_trans*dt) then
             state(i) = 0
-            x(i) = 0.d0
-            x_shift(i) = 0.d0
+            x_L(i) = 0.d0
+            x_S(i) = 0.d0
             detach_pre_count(i) = detach_pre_count(i)+1
           end if
         else
-          if (rnd <= t_scale*g_trans*dt .or. x(i)+x_shift(i) <= x_min_detach) then
+          if (rnd <= t_scale*g_trans*dt .or. x_L(i)+x_S(i) <= x_min_detach) then
             state(i) = 0
-            x(i) = 0.d0
-            x_shift(i) = 0.d0
+            x_L(i) = 0.d0
+            x_S(i) = 0.d0
             detach_pos_count(i) = detach_pos_count(i)+1
           end if
         end if
@@ -522,10 +521,10 @@ contains
 
 !$omp parallel do default(none)&
 !$omp private(i)&
-!$omp shared(x,phi,dphi,d2phi,stiff_ps,force,x_shift,state)
+!$omp shared(x_L,phi,dphi,d2phi,stiff_ps,force,x_S,state)
     do i = 1, np
       if (state(i) == 1) then
-        call powerstroke_potential_bind(x(i), x_shift(i), phi(i), dphi(i), d2phi(i))
+        call powerstroke_potential_bind(x_L(i), x_S(i), phi(i), dphi(i), d2phi(i))
         force(i) = -dphi(i)
         if ( d2phi(i) > 0.d0) then
           stiff_ps(i)  = omega_stiff*d2phi(i)
@@ -533,31 +532,12 @@ contains
           stiff_ps(i)  = c_minus*dabs(d2phi(i))
         end if
       else
-        force(i) = -k_spring*x_shift(i)
+        force(i) = -k_spring*x_S(i)
         stiff_ps(i) = k_spring
       end if
     end do
     
   end subroutine simu_force_powerstroke
-
-  subroutine simu_force_powerstroke_i(i)
-    implicit none
-    integer :: i
-
-    if (state(i) == 1) then
-      call powerstroke_potential_bind(x(i), x_shift(i), phi(i), dphi(i), d2phi(i))
-      force(i) = -dphi(i)
-      if ( d2phi(i) > 0.d0) then
-        stiff_ps(i)  = omega_stiff*d2phi(i)
-      else
-        stiff_ps(i)  = c_minus*dabs(d2phi(i))
-      end if
-    else
-      force(i) = -k_spring*x_shift(i)
-      stiff_ps(i) = k_spring
-    end if
-    
-  end subroutine simu_force_powerstroke_i
 
   subroutine powerstroke_potential(x, phi, dphi, d2phi)
     implicit none
@@ -582,26 +562,26 @@ contains
     d2phi = 0.5*(d2A + d2B - d2DS)
   end subroutine powerstroke_potential
 
-  subroutine powerstroke_potential_bind(x, x_shift, phi, dphi, d2phi)
+  subroutine powerstroke_potential_bind(x_L, x_S, phi, dphi, d2phi)
     implicit none
-    real(8), intent(in) :: x, x_shift
+    real(8), intent(in) :: x_L, x_S
     real(8), intent(out) :: phi, dphi, d2phi
     
     real(8) :: A, dA, d2A, B, dB, d2B, DS, dDS, d2DS
     
-    A = 0.5*c_pre*(x-x_pre)**2 + E_pre
-    dA = c_pre*(x-x_pre)
+    A = 0.5*c_pre*(x_L-x_pre)**2 + E_pre
+    dA = c_pre*(x_L-x_pre)
     d2A = c_pre
-    B = 0.5*c_pos*(x-x_pos)**2 + E_pos
-    dB = c_pos*(x-x_pos)
+    B = 0.5*c_pos*(x_L-x_pos)**2 + E_pos
+    dB = c_pos*(x_L-x_pos)
     d2B = c_pos
     DS = sqrt((A - B )**2 + 2.0*delta**2)
       
     dDS = (A-B)*(dA-dB)/DS
     d2DS = (d2A-d2B)*(A-B)/DS + (dA-dB)**2/DS - (dA-dB)*(A-B)*dDS/DS**2
 
-    phi = 0.5*( A + B - DS) + 0.5*k_spring*(x_shift+x)**2
-    dphi = 0.5*(dA + dB - dDS) + k_spring*(x_shift+x)
+    phi = 0.5*( A + B - DS) + 0.5*k_spring*(x_S+x_L)**2
+    dphi = 0.5*(dA + dB - dDS) + k_spring*(x_S+x_L)
     d2phi = 0.5*(d2A + d2B - d2DS) + k_spring
   end subroutine powerstroke_potential_bind
 
@@ -626,39 +606,39 @@ contains
 
 !$omp parallel do default(none) &
 !$omp private(i,coef,vel,index1,index2,index3,it_dt) &
-!$omp shared(force,force_random,x,state,x_shift,dict_2d) &
+!$omp shared(force,force_random,x_L,state,x_S,dict_2d) &
 !$omp shared(dx_2d,ds_2d,dict_1d,dict_1d_ave,dx_1d) &
 !$omp shared(dx_p2d,ds_p2d,dictp_2d,dt) &
 !$omp reduction(+:fz,na)
     do i = 1, np
       if (state(i) == 1) then
-!C          fz = fz + k_spring*(x_shift(i) + x(i))
+!C          fz = fz + k_spring*(x_S(i) + x(i))
 !C          na = na + 1
         coef = sqrt(2.0*fric_x*KB_T/dt)
 !          vel = (1.d0/fric_x)*(force(i) + coef*force_random(i))
 !          x(i) = x(i) + dt*vel
-        call index_determine(index1, x(i),       real(dict_2d_xlowb,kind=8), real(dict_2d_xupb,kind=8), dict_2d_xsz)
-        call index_determine(index2, x_shift(i), real(dict_2d_slowb,kind=8), real(dict_2d_supb,kind=8), dict_2d_shift_sz)  
+        call index_determine(index1, x_L(i),       real(dict_2d_xlowb,kind=8), real(dict_2d_xupb,kind=8), dict_2d_xsz)
+        call index_determine(index2, x_S(i), real(dict_2d_slowb,kind=8), real(dict_2d_supb,kind=8), dict_2d_shift_sz)  
 
         if(SampleSwitch == 3) then !C weighted sampling with probabilistic record switching
-            call sample_2d(x(i), x_shift(i), dict_2d,                              &
+            call sample_2d(x_L(i), x_S(i), dict_2d,                              &
               & dble(dict_2d_xlowb), dble(dict_2d_xupb), dx_2d, index1,            &
               & dble(dict_2d_slowb), dble(dict_2d_supb), ds_2d, index2,i,          &
               & dict_2d_xsz, dict_2d_shift_sz)
         else if(SampleSwitch == 31) then !C in addition, precise record is added.
-          if(x(i) >= dictp_2d_xlowb .and. x(i) <= dictp_2d_xupb .and. &
-              & x_shift(i) >= dictp_2d_slowb .and. x_shift(i) <= dictp_2d_supb) then
-            call index_determine(index1, x(i),       real(dictp_2d_xlowb,kind=8),  &
+          if(x_L(i) >= dictp_2d_xlowb .and. x_L(i) <= dictp_2d_xupb .and. &
+              & x_S(i) >= dictp_2d_slowb .and. x_S(i) <= dictp_2d_supb) then
+            call index_determine(index1, x_L(i),       real(dictp_2d_xlowb,kind=8),  &
               &   real(dictp_2d_xupb,kind=8), dictp_2d_xsz)
-            call index_determine(index2, x_shift(i), real(dictp_2d_slowb,kind=8),  &
+            call index_determine(index2, x_S(i), real(dictp_2d_slowb,kind=8),  &
               &   real(dictp_2d_supb,kind=8), dictp_2d_shift_sz)  
 
-            call sample_2d(x(i), x_shift(i), dictp_2d,                             &
+            call sample_2d(x_L(i), x_S(i), dictp_2d,                             &
                 & dble(dictp_2d_xlowb), dble(dictp_2d_xupb), dx_p2d, index1,       &
                 & dble(dictp_2d_slowb), dble(dictp_2d_supb), ds_p2d, index2,i,     &
                 & dictp_2d_xsz, dictp_2d_shift_sz)
           else
-            call sample_2d(x(i), x_shift(i), dict_2d,                              &
+            call sample_2d(x_L(i), x_S(i), dict_2d,                              &
                 & dble(dict_2d_xlowb), dble(dict_2d_xupb), dx_2d, index1,          &
                 & dble(dict_2d_slowb), dble(dict_2d_supb), ds_2d, index2,i,        &
                 & dict_2d_xsz, dict_2d_shift_sz)
@@ -668,14 +648,14 @@ contains
           stop
         end if
 
-        fz = fz + k_spring*(x_shift(i) + x(i))
+        fz = fz + k_spring*(x_S(i) + x_L(i))
         na = na + 1
 
       else
         coef = sqrt(2.0*fric_d*KB_T/dt)
-        call index_determine(index3, x_shift(i), real(dict_1d_xlowb,kind=8), real(dict_1d_xupb,kind=8), dict_2d_xsz)
+        call index_determine(index3, x_S(i), real(dict_1d_xlowb,kind=8), real(dict_1d_xupb,kind=8), dict_2d_xsz)
         if(SampleSwitch == 3 .or. SampleSwitch==31) then
-            call sample_1d(x_shift(i), dict_1d, dble(dict_1d_xlowb), dble(dict_1d_xupb), &
+            call sample_1d(x_S(i), dict_1d, dble(dict_1d_xlowb), dble(dict_1d_xupb), &
               &      dx_1d, index3, i)
         else 
             write(*,*) "Unknown Switch"
@@ -717,24 +697,24 @@ contains
 
 !$omp parallel do default(none) &
 !$omp private(i) &
-!$omp shared(state,x_shift,dz)
+!$omp shared(state,x_S,dz)
     do i = 1, np
-      if (state(i) == 1) x_shift(i) = x_shift(i) - dz
+      if (state(i) == 1) x_S(i) = x_S(i) - dz
     end do
 
 !$omp parallel do default(none) &
 !$omp private(i) &
-!$omp shared(x,x_shift)
+!$omp shared(x_L,x_S)
     do i=1, np
-      if (x(i) < dict_2d_xlowb) then
-        x(i)=dict_2d_xlowb
-      else if (x(i) > dict_2d_xupb) then
-        x(i)= dict_2d_xupb
+      if (x_L(i) < dict_2d_xlowb) then
+        x_L(i)=dict_2d_xlowb
+      else if (x_L(i) > dict_2d_xupb) then
+        x_L(i)= dict_2d_xupb
       end if
-      if (x_shift(i) < dict_2d_slowb) then
-        x_shift(i)=dict_2d_slowb
-      else if (x_shift(i) > dict_2d_supb) then
-        x_shift(i)=dict_2d_supb
+      if (x_S(i) < dict_2d_slowb) then
+        x_S(i)=dict_2d_slowb
+      else if (x_S(i) > dict_2d_supb) then
+        x_S(i)=dict_2d_supb
       end if
     end do
   end subroutine simu_update
@@ -755,7 +735,7 @@ contains
       n_detach_pre = n_detach_pre + detach_pre_count(i)
       n_detach_pos = n_detach_pos + detach_pos_count(i)
       if (state(i) == 1) then
-        if (x(i) <= x_barrier) then
+        if (x_L(i) <= x_barrier) then
           npre = npre + 1
         else
           npos = npos + 1
