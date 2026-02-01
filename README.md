@@ -54,7 +54,7 @@ Compile the source files:
 4. Usage
 ------------------------------------------------------------
 
-To reproduce the results of euler_maruyama method in the paper, 
+To reproduce the results of euler_maruyama method in the paper,  
 run:
 ```
     export OMP_NUM_THREADS=40;                                     
@@ -62,7 +62,7 @@ run:
 ```
 In Euler Maruyama method, time step width is 0.5 ns. In order to shorten the execution time, the simulation time length is set to 0.02 sec.
 
-To prepare distribution records in the paper, 
+To prepare distribution records in the paper,  
 run:
 ```
     export OMP_NUM_THREADS=10
@@ -73,7 +73,7 @@ The distribution of myosin behavior is measured over 1,000 trials for each initi
 Parallelism is implemented using multi-threading for trials and multi-processing for the various initial conditions.
 
 
-To reproduce the results of distribution record based method in the paper, 
+To reproduce the results of distribution record based method in the paper,  
 run:
 ```
     export OMP_NUM_THREADS=40
@@ -90,6 +90,12 @@ The number of threads and processes can be adjusted to suit your computing envir
 
 - trans.csv has the reslts of each output time step.
     9-th column data corresponds to the z-line displacement.
+  - Be careful not to overwrite the output file, as the file name is the same for both Euler Maruyama method and distribution record based method.
+- To make a graph of z-line displacement "z_disp.png" from trans.csv,  
+  run: 
+```
+   python z_disp.py
+```
 
 ------------------------------------------------------------
 6. License
