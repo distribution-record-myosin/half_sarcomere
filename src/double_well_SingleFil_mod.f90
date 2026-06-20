@@ -5,27 +5,27 @@ program double_well_test
   logical, parameter :: SI_Switch = .false.
   integer, parameter :: SwitchZupdate = 2
   !integer, parameter :: SwitchZupdate = 21
-!C in parac.inc  integer, parameter :: SampleSwitch = 3
   !Energy Parameters
   real(8), parameter :: KB_T = 0.0138 * 310                !pN*nm Boltzmann Constact x Temparature
   real(8), parameter :: E_ATP = 22.5*KB_T                  !pN*nm Energy of ATP hydrolysis
   real(8), parameter :: c_pre = 8.0, c_pos = 8.0           !pN/nm Curvature of the two wells
   real(8), parameter :: E_pre = 0.7*E_ATP, E_pos = 0.0     !pN*nm Assuming 70% of E_ATP is used for powerstroke
   real(8), parameter :: x_pre = 0.0, x_pos = 8.5           !nm    Levearm end position
-  real(8), parameter :: delta = 2.0*KB_T                   !pN*nm Barrier relaxation
+  real(8), parameter :: delta = DELTA_SCALE*KB_T                   !pN*nm Barrier relaxation
   real(8), parameter :: omega_stiff = 1.0, c_minus = 2.5   !Unitless Stiffness coefficient
   real(8), parameter :: k_spring = 2.8                     !pN/nm Spring
-  real(8), parameter :: x_S0 = 0.0                         !nm   Spring energy = 0.5*k_spring*(x_S+x_L)
+  real(8), parameter :: x_S0 = 0.0                     !nm   Spring energy = 0.5*k_spring*(x_shift+x)
   real(8) :: x_barrier
   
   !Friction
   real(8), parameter :: fric_x = 80.0 !pN*ns/nm  friction for leverarm rotation
-  real(8), parameter :: fric_d = 80.0 !pN*ns/nm  friction for x_S during detachment
+  real(8), parameter :: fric_d = 80.0 !pN*ns/nm  friction for x_shift during detachment
   real(8), parameter :: x_min_detach = -10.0
   
   !Transition
   real(8), parameter :: a_trans = 500, d_trans = 5000, g_trans=100  !1/s Transition rate constants
-  
+  real(8), parameter :: gf_trans = 10.0  !unit 1/s
+  real(8), parameter :: gf_x0 = 2.0  !unit nm
   !Sarcomere (per one active filament(AF))
   real(8) :: z                                             !nm Contraction distance
   real(8) :: FzPerAF                                       !pN Contraction Force per one AF
@@ -36,7 +36,7 @@ program double_well_test
   real(8), parameter :: dict_dt = 0.5
 
   real(8) :: dt   !ns less than fric_x/max(c_pre,c_pos)
-  integer :: nt_in, nt_out
+  integer :: nt_in
 
   integer :: it_out, it_in
   real(8) :: total_time
@@ -56,37 +56,22 @@ program double_well_test
   real(8) :: phi(np), dphi(np), d2phi(np), stiff_ps(np)
   integer :: RndForceSeedArray(np)  ! random force seeds
   integer :: RndStateSeedArray(np)  ! state transition seeds
-  
-  integer, parameter :: dict_psz = 1000 
-  !C in parac.inc integer, parameter :: dict_2d_xlowb = -7
-  !C in parac.inc integer, parameter :: dict_2d_xupb = 14
-  !C in parac.inc integer, parameter :: dict_2d_xsz = 100   
-  !C in parac.inc integer, parameter :: dict_2d_slowb = -19
-  !C in parac.inc integer, parameter :: dict_2d_supb = 23
-  !C in parac.inc integer, parameter :: dict_2d_shift_sz = 200 
-  !C in parac.inc integer, parameter :: dict_1d_xlowb = -6
-  !C in parac.inc integer, parameter :: dict_1d_xupb = 6
-  !C in parac.inc integer, parameter :: dict_1d_xsz = 100
-
-  !C in parac.inc integer, parameter :: dictp_2d_xlowb = -3
-  !C in parac.inc integer, parameter :: dictp_2d_xupb = 10
-  !C in parac.inc integer, parameter :: dictp_2d_xsz = 200
-  !C in parac.inc integer, parameter :: dictp_2d_slowb = -3
-  !C in parac.inc integer, parameter :: dictp_2d_supb = 3
 
   real(8) :: dict_2d(dict_psz, dict_2d_xsz, dict_2d_shift_sz)
 
   real(8) :: dict_1d(dict_psz, dict_1d_xsz)
   real(8) :: dict_1d_ave(dict_1d_xsz)  
 
-  real(8) :: dictp_2d(dict_psz, dictp_2d_xsz, dictp_2d_shift_sz)
 
   !C-- SwitchZupdate == 4
   real(8) :: zdot_p, zdot, gamma
 
+
+  if(ConstantVelocitySwitch) then
+    read(*,*) ConstantVelocity
+  end if
   dt = real(time,kind=8)
   nt_in  = 100000/time           !C output every 100000 ns
-  nt_out = 10000.0*(time/1000.0) !C 10^9 ns
 
   if(SwitchZupdate==4) then
     zdot_p = 0
@@ -290,9 +275,9 @@ contains
     character(len=100) :: filename
     real(8) :: dx, v
     
-    write(filename, '(A,I0,A,I0,A,I0,A,I0,A,I0,A,I0,A,I0,A)') 'dist_records/dict1000_0.5_',&
-      & time,'_',dict_2d_xlowb, '_',dict_2d_xupb,'_',dict_2d_xsz,'_',dict_2d_slowb,'_',dict_2d_supb,&
-      & '_',dict_2d_shift_sz,'.csv'  
+    write(filename, '(A,I0,A,I0,A,I0,A,I0,A,I0,A,I0,A,I0,A,I0,A,I0,A)') 'dist_records/dict',dict_psz,'_0.5_',&
+      & time,'_',DELTA_SCALE,'_',dict_2d_xlowb, '_',dict_2d_xupb,'_',dict_2d_xsz,'_',dict_2d_slowb,'_',dict_2d_supb,&
+      & '_',dict_2d_shift_sz,'.csv'
     write(*,*) filename
     open(unit=10, file=filename, status='old', action='read', iostat=ios, form="unformatted")
     if (ios /= 0) then
@@ -303,8 +288,8 @@ contains
     read(10) dict_2d(:,:,:)
     close(10)
 
-    write(filename, '(A,I0,A,I0,A,I0,A,I0,A)') 'dist_records/dict1000_0.5_',time, &
-      & '_',dict_1d_xlowb,'_',dict_1d_xupb,'_',dict_1d_xsz,'.csv'  
+    write(filename, '(A,I0,A,I0,A,I0,A,I0,A,I0,A,I0,A)') 'dist_records/dict',dict_psz,'_0.5_',time, &
+      & '_',DELTA_SCALE,'_',dict_1d_xlowb,'_',dict_1d_xupb,'_',dict_1d_xsz,'.csv'
     write(*,*) filename
     open(unit=10, file=filename, status='old', action='read', iostat=ios, form="unformatted")
     if (ios /= 0) then
@@ -312,19 +297,6 @@ contains
       stop
     end if
     read(10) dict_1d(:,:)
-    close(10)
-
-    write(filename, '(A,I0,A,I0,A,I0,A,I0,A,I0,A,I0,A,I0,A)') 'dist_records/dict1000_0.5_',time,'_',dictp_2d_xlowb,&
-      & '_',dictp_2d_xupb,'_',dictp_2d_xsz,'_',dictp_2d_slowb,'_',dictp_2d_supb,'_', &
-      & dictp_2d_shift_sz,'.csv'  
-    write(*,*) filename
-    open(unit=10, file=filename, status='old', action='read', iostat=ios, form="unformatted")
-    if (ios /= 0) then
-      print *, "Error opening file:", trim(filename)
-      stop
-    end if
-
-    read(10) dictp_2d(:,:,:)
     close(10)
 
     !C each arrays store the coordinate at the end of the specified duration.
@@ -341,13 +313,6 @@ contains
       dict_1d(:, j+1) = dict_1d(:, j+1) - (dict_1d_xlowb + dx*j)
     end do
 
-
-    dx = (dictp_2d_xupb - dictp_2d_xlowb) / dble(dictp_2d_xsz-1)
-    do i = 0, dictp_2d_shift_sz-1    
-      do j = 0, dictp_2d_xsz-1
-        dictp_2d(:, j+1, i+1) = dictp_2d(:, j+1, i+1) - (dictp_2d_xlowb+dx*j)
-      end do
-    end do
 
     print *, "Data successfully loaded."
   end subroutine read_files
@@ -472,7 +437,7 @@ contains
             detach_pre_count(i) = detach_pre_count(i)+1
           end if
         else
-          if (rnd <= t_scale*g_trans*dt .or. x_L(i)+x_S(i) <= x_min_detach) then
+          if (rnd <= dt*t_scale*(g_trans+gf_trans*exp(-gf_x0*k_spring*(x_L(i)+x_S(i))/KB_T))) then
             state(i) = 0
             x_L(i) = 0.d0
             x_S(i) = 0.d0
@@ -501,19 +466,6 @@ contains
     end do
     
   end subroutine simu_force_random
-
-  subroutine simu_force_random_i(i)
-    implicit none
-
-    integer :: i, ir
-    real(8) :: rnd
-    real(8) :: unifrd
-
-    rnd = unifrd(RndForceSeedArray(i))
-    ir = max(int(rnd * NP_RandomForce), 1)
-    force_random(i) = RandomForceArray(ir)
-    
-  end subroutine simu_force_random_i
 
   subroutine simu_force_powerstroke()
     implicit none
@@ -601,66 +553,33 @@ contains
     dx_2d=   (dict_2d_xupb-dict_2d_xlowb)/dble(dict_2d_xsz-1)
     ds_2d=   (dict_2d_supb-dict_2d_slowb)/dble(dict_2d_shift_sz-1)
     dx_1d=   (dict_1d_xupb-dict_1d_xlowb)/dble(dict_1d_xsz-1)
-    dx_p2d=   (dictp_2d_xupb-dictp_2d_xlowb)/dble(dictp_2d_xsz-1)
-    ds_p2d=   (dictp_2d_supb-dictp_2d_slowb)/dble(dictp_2d_shift_sz-1)
 
 !$omp parallel do default(none) &
 !$omp private(i,coef,vel,index1,index2,index3,it_dt) &
 !$omp shared(force,force_random,x_L,state,x_S,dict_2d) &
 !$omp shared(dx_2d,ds_2d,dict_1d,dict_1d_ave,dx_1d) &
-!$omp shared(dx_p2d,ds_p2d,dictp_2d,dt) &
+!$omp shared(dt) &
 !$omp reduction(+:fz,na)
     do i = 1, np
       if (state(i) == 1) then
-!C          fz = fz + k_spring*(x_S(i) + x(i))
-!C          na = na + 1
         coef = sqrt(2.0*fric_x*KB_T/dt)
 !          vel = (1.d0/fric_x)*(force(i) + coef*force_random(i))
 !          x(i) = x(i) + dt*vel
         call index_determine(index1, x_L(i),       real(dict_2d_xlowb,kind=8), real(dict_2d_xupb,kind=8), dict_2d_xsz)
         call index_determine(index2, x_S(i), real(dict_2d_slowb,kind=8), real(dict_2d_supb,kind=8), dict_2d_shift_sz)  
 
-        if(SampleSwitch == 3) then !C weighted sampling with probabilistic record switching
-            call sample_2d(x_L(i), x_S(i), dict_2d,                              &
-              & dble(dict_2d_xlowb), dble(dict_2d_xupb), dx_2d, index1,            &
-              & dble(dict_2d_slowb), dble(dict_2d_supb), ds_2d, index2,i,          &
+        call sample_2d(x_L(i), x_S(i), dict_2d,                                &
+              & dble(dict_2d_xlowb), dble(dict_2d_xupb), dx_2d, index1,        &
+              & dble(dict_2d_slowb), dble(dict_2d_supb), ds_2d, index2,i,      &
               & dict_2d_xsz, dict_2d_shift_sz)
-        else if(SampleSwitch == 31) then !C in addition, precise record is added.
-          if(x_L(i) >= dictp_2d_xlowb .and. x_L(i) <= dictp_2d_xupb .and. &
-              & x_S(i) >= dictp_2d_slowb .and. x_S(i) <= dictp_2d_supb) then
-            call index_determine(index1, x_L(i),       real(dictp_2d_xlowb,kind=8),  &
-              &   real(dictp_2d_xupb,kind=8), dictp_2d_xsz)
-            call index_determine(index2, x_S(i), real(dictp_2d_slowb,kind=8),  &
-              &   real(dictp_2d_supb,kind=8), dictp_2d_shift_sz)  
-
-            call sample_2d(x_L(i), x_S(i), dictp_2d,                             &
-                & dble(dictp_2d_xlowb), dble(dictp_2d_xupb), dx_p2d, index1,       &
-                & dble(dictp_2d_slowb), dble(dictp_2d_supb), ds_p2d, index2,i,     &
-                & dictp_2d_xsz, dictp_2d_shift_sz)
-          else
-            call sample_2d(x_L(i), x_S(i), dict_2d,                              &
-                & dble(dict_2d_xlowb), dble(dict_2d_xupb), dx_2d, index1,          &
-                & dble(dict_2d_slowb), dble(dict_2d_supb), ds_2d, index2,i,        &
-                & dict_2d_xsz, dict_2d_shift_sz)
-         endif
-        else
-          write(*,*) "Unknown Switch:",SampleSwitch
-          stop
-        end if
-
         fz = fz + k_spring*(x_S(i) + x_L(i))
         na = na + 1
 
       else
         coef = sqrt(2.0*fric_d*KB_T/dt)
         call index_determine(index3, x_S(i), real(dict_1d_xlowb,kind=8), real(dict_1d_xupb,kind=8), dict_2d_xsz)
-        if(SampleSwitch == 3 .or. SampleSwitch==31) then
-            call sample_1d(x_S(i), dict_1d, dble(dict_1d_xlowb), dble(dict_1d_xupb), &
+        call sample_1d(x_S(i), dict_1d, dble(dict_1d_xlowb), dble(dict_1d_xupb), &
               &      dx_1d, index3, i)
-        else 
-            write(*,*) "Unknown Switch"
-            stop
-        end if
       end if
     end do
       
@@ -675,10 +594,14 @@ contains
       ! average between explicit and implicit methods
       dz = (FzPerAF - kZ*z)/(gamma_sarco/(dt*time_scale) + 0.5*naPerAF*k_spring + 0.5*kZ)
     else if (SwitchZupdate == 2) then
+      if(ConstantVelocitySwitch) then
+        dz=1.d-9*dt*ConstantVelocity
+      else
       ! Solve gamma_sarco*(z(t+dt)-z(t))/(dt*time_scale) = FzPerAF - naPerAF*k_spring*dz - kZ*z(t+dt)
       ! i.e. gamma_sarco*dz/(dt*time_scale) = FzPerAF - naPerAF*k_spring*dz - kZ*(z(t)+dz)
       ! i.e. [gamma_sarco/(dt*time_scale) + naPerAF*k_spring + kZ]*dz = FzPerAF - kZ*z(t)
-      dz = (FzPerAF - kZ*z)/(gamma_sarco/(dt*time_scale) + naPerAF*k_spring + kZ)
+        dz = (FzPerAF - kZ*z)/(gamma_sarco/(dt*time_scale) + naPerAF*k_spring + kZ)
+      end if
     else if (SwitchZupdate == 21) then !C modified implicit method
 !      dz = (FzPerAF - kZ*z)/(gamma_sarco/(dt*time_scale) + naPerAF*k_spring + kZ)
       dz = (FzPerAF - kZ*z)/(gamma_sarco/(dt*time_scale) + naPerAF*(k_spring*8.0/(8.0+k_spring)) + kZ)

@@ -1,21 +1,21 @@
 program double_well_test
   implicit none
+  include 'param.inc'
   integer, parameter :: np = 40320
-    integer, parameter :: SwitchZupdate = 0
   !Energy Parameters
   real(8), parameter :: KB_T = 0.0138 * 310                !pN*nm Boltzmann Constact x Temparature
   real(8), parameter :: E_ATP = 22.5*KB_T                  !pN*nm Energy of ATP hydrolysis
   real(8), parameter :: c_pre = 8.0, c_pos = 8.0           !pN/nm Curvature of the two wells
   real(8), parameter :: E_pre = 0.7*E_ATP, E_pos = 0.0     !pN*nm Assuming 70% of E_ATP is used for powerstroke
   real(8), parameter :: x_pre = 0.0, x_pos = 8.5           !nm    Levearm end position
-  real(8), parameter :: delta = 2.0*KB_T                   !pN*nm Barrier relaxation
+  real(8), parameter :: delta = DELTA_SCALE*KB_T           !pN*nm Barrier relaxation
   real(8), parameter :: omega_stiff = 1.0, c_minus = 2.5   !Unitless Stiffness coefficient
   real(8), parameter :: k_spring = 2.8                     !pN/nm Spring
-  real(8), parameter :: x_S0 = 0.0                         !nm   Spring energy = 0.5*k_spring*(x_S+x_L)
+  real(8), parameter :: x_S0 = 0.0                     !nm   Spring energy = 0.5*k_spring*(x_shift+x)
   real(8) :: x_barrier
   !Friction
   real(8), parameter :: fric_x = 80.0 !pN*ns/nm  friction for leverarm rotation
-  real(8), parameter :: fric_d = 80.0 !pN*ns/nm  friction for x_S during detachment
+  real(8), parameter :: fric_d = 80.0 !pN*ns/nm  friction for x_shift during detachment
   real(8), parameter :: x_min_detach = -10.0
   !Transition
   real(8), parameter :: a_trans = 500, d_trans = 5000, g_trans=100  !1/s Transition rate constants
@@ -25,10 +25,9 @@ program double_well_test
   integer, parameter :: nM = 80                            !Number of myosins per one AF
   real(8), parameter :: gamma_sarco = 1.d-5                !pN*s/nm Viscosity per one AF
   real(8), parameter :: kZ = 8.0                           !pN/nm   Spring constant per one AF
-
   !Time step
   real(8), parameter :: dt = 0.5   !ns less than fric_x/max(c_pre,c_pos)
-  integer, parameter :: nt_in = 100000/dt, nt_out = 200  !Fine record
+  integer, parameter :: nt_in = 200000
   integer :: it_out, it_in
   real(8) :: total_time
   !Random Force
@@ -43,9 +42,12 @@ program double_well_test
   real(8) :: x_L(np), force(np), force_random(np)
   real(8) :: x_S(np)
   real(8) :: phi(np), dphi(np), d2phi(np), stiff_ps(np)
-  integer :: RndForceSeedArray(np)  ! random force seeds
-  integer :: RndStateSeedArray(np)  ! state transition seeds
+  integer(4) :: RndForceSeedArray(4,np)  ! random force seeds
+  integer(4) :: RndStateSeedArray(4,np)  ! state transition seeds
   
+  if(ConstantVelocitySwitch) then
+    read(*,*) ConstantVelocity
+  end if 
 
   call draw_powerstroke_potential()
   call initialize()
@@ -127,10 +129,14 @@ contains
     detach_pre_count = 0
     detach_pos_count = 0
     do i = 1, np
-!C      RndForceSeedArray(i) = i
-!C      RndStateSeedArray(i) = np+i
-      RndForceSeedArray(i) = i+20
-      RndStateSeedArray(i) = np+i+20
+      RndForceSeedArray(1,i) = 123456789
+      RndForceSeedArray(2,i) = 362436869
+      RndForceSeedArray(3,i) = 521288629
+      RndForceSeedArray(4,i) = i
+      RndStateSeedArray(1,i) = 123456789
+      RndStateSeedArray(2,i) = 362436869
+      RndStateSeedArray(3,i) = 521288629
+      RndStateSeedArray(4,i) = i+np
     end do
   end subroutine initialize
 
@@ -180,14 +186,17 @@ contains
     implicit none
     real(8), parameter :: t_scale = 1.d-9   !ns to s
     integer :: i
-    real(8) :: unifrd, rnd
+    real(8) :: xorshift, rnd
+    integer(4) :: xseed(4)
 
     !$omp parallel do default(none) &
-    !$omp private(i,rnd)&
+    !$omp private(i,rnd,xseed)&
     !$omp shared(state,x_L,RndStateSeedArray,x_barrier,x_S)&
     !$omp shared(attach_count,detach_pre_count,detach_pos_count)
     do i = 1, np
-      rnd = unifrd(RndStateSeedArray(i))
+      xseed(1:4) = RndStateSeedArray(1:4,i)
+      rnd = xorshift(xseed)
+      RndStateSeedArray(1:4,i) = xseed(1:4)
       if (state(i) == 0) then
         if (rnd <= t_scale*a_trans*dt)  then
           state(i) = 1
@@ -219,13 +228,16 @@ contains
 
     integer :: i, ir
     real(8) :: rnd
-    real(8) :: unifrd
+    real(8) :: xorshift
+    integer(4) :: xseed(4)
 
     !$omp parallel do default(none) &
-    !$omp private(i,rnd,ir)&
+    !$omp private(i,rnd,ir,xseed)&
     !$omp shared(force_random,RndForceSeedArray,RandomForceArray)
     do i = 1, np
-      rnd = unifrd(RndForceSeedArray(i))
+      xseed(1:4) = RndForceSeedArray(1:4,i)
+      rnd = xorshift(xseed)
+      RndForceSeedArray(1:4,i) = xseed(1:4)
       ir = max(int(rnd * NP_RandomForce), 1)
       force_random(i) = RandomForceArray(ir)
     end do
@@ -318,11 +330,11 @@ contains
     !$omp reduction(+:fz,na)
     do i = 1, np
       if (state(i) == 1) then
-        fz = fz + k_spring*(x_S(i) + x_L(i))
         na = na + 1
         coef = sqrt(2.0*fric_x*KB_T/dt)
         vel = (1.d0/fric_x)*(force(i) + coef*force_random(i))
         x_L(i) = x_L(i) + dt*vel
+        fz = fz + k_spring*(x_S(i) + x_L(i))
       else
         coef = sqrt(2.0*fric_d*KB_T/dt)
         vel = (1.d0/fric_d)*(force(i) + coef*force_random(i))
@@ -332,16 +344,8 @@ contains
     
     FzPerAF = fz/(dble(np)/dble(nM))
     naPerAF = dble(na)/(dble(np)/dble(nM))
-    if (SwitchZupdate == 2) then
-      ! Solve gamma_sarco*(z(t+dt)-z(t))/(dt*time_scale) = FzPerAF - naPerAF*k_spring*dz - kZ*z(t+dt)
-      ! i.e. gamma_sarco*dz/(dt*time_scale) = FzPerAF - naPerAF*k_spring*dz - kZ*(z(t)+dz)
-      ! i.e. [gamma_sarco/(dt*time_scale) + naPerAF*k_spring + kZ]*dz = FzPerAF - kZ*z(t)
-      dz = (FzPerAF - kZ*z)/(gamma_sarco/(dt*time_scale) + naPerAF*k_spring + kZ)
-    else if (SwitchZupdate == 1) then
-      ! Solve gamma_sarco*(z(t+dt)-z(t))/(dt*time_scale) = FzPerAF - kZ*z(t+dt)
-      ! i.e. gamma_sarco*dz/(dt*time_scale) = FzPerAF - kZ*(z(t)+dz)
-      ! i.e. [gamma_sarco/(dt*time_scale)+kZ]*dz = FzPerAF - kZ*z(t)
-      dz = (FzPerAF - kZ*z)/(gamma_sarco/(dt*time_scale) + kZ)
+    if(ConstantVelocitySwitch) then
+      dz=1.d-9*dt*ConstantVelocity
     else
       ! Solve gamma_sarco*(z(t+dt)-z(t))/(dt*time_scale) = FzPerAF - kZ*z(t)
       ! i.e. gamma_sarco*dz/(dt*time_scale) = FzPerAF - kZ*z(t)
@@ -400,3 +404,21 @@ real(8) function unifrd(rndSeed)
   if (rndSeed < 0) rndSeed = (rndSeed + T30) + T30
   unifrd = dble(rndSeed) / MYU
 end function unifrd
+
+real(8) function xorshift(rndSeed)
+  implicit none
+  integer(4), intent(inout) :: rndSeed(4)
+  integer(4) :: t, r
+  t = ieor(rndSeed(1), ishft(rndSeed(1), 11))
+  rndSeed(1) = rndSeed(2)
+  rndSeed(2) = rndSeed(3)
+  rndSeed(3) = rndSeed(4)
+  rndSeed(4) = ieor(ieor (rndSeed(4), ishft (rndSeed(4), -19)), ieor(t, ishft(t, -8)))
+  r = rndSeed(4)
+  if (r < 0) then
+    xorshift = (dble (r) + 2.0d0**32) / (2.0d0**32)
+  else
+    xorshift = dble(r) / (2.0d0**32)
+  end if
+    
+end function xorshift

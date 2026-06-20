@@ -4,7 +4,7 @@ program double_well_test
   include 'param.inc'
 
   integer :: ierr, rank, procs
-  integer, parameter :: np = 1000
+  integer, parameter :: np = dict_psz
   integer, parameter :: SwitchZupdate = 0
   !Energy Parameters
   real(8), parameter :: KB_T = 0.0138 * 310                !pN*nm Boltzmann Constact x Temparature
@@ -13,7 +13,7 @@ program double_well_test
   real(8), parameter :: E_pre = 0.7*E_ATP, E_pos = 0.0     !pN*nm Assuming 70% of E_ATP is used for powerstroke
   real(8), parameter :: x_pre = 0.0, x_pos = 8.5           !nm    Levearm end position
   !org  real(8), parameter :: delta = 4.0*KB_T                   !pN*nm Barrier relaxation
-  real(8), parameter :: delta = 2.0*KB_T                   !pN*nm Barrier relaxation
+  real(8), parameter :: delta = DELTA_SCALE*KB_T                   !pN*nm Barrier relaxation
   real(8), parameter :: omega_stiff = 1.0, c_minus = 2.5   !Unitless Stiffness coefficient
   real(8), parameter :: k_spring = 2.8                     !pN/nm Spring
   real(8), parameter :: x_S0 = 0.0                     !nm   Spring energy = 0.5*k_spring*(x_S+x)
@@ -30,8 +30,6 @@ program double_well_test
   integer, parameter :: nM = 20                            !Number of myosins per one AF
   real(8), parameter :: gamma_sarco = 1.d-5                !pN*s/nm Viscosity per one AF
   real(8), parameter :: kZ = 0.5                           !pN/nm   Spring constant per one AF
-
-  !C in param.inc  integer, parameter :: time=100000
   real(8), parameter :: dt = 0.5   !ns less than fric_x/max(c_pre,c_pos)
   integer, parameter :: nt_in = int(time/dt+0.1)
   integer :: it_out, it_in
@@ -50,25 +48,6 @@ program double_well_test
   real(8) :: phi(np), dphi(np), d2phi(np), stiff_ps(np)
   integer :: RndForceSeedArray(np)  ! random force seeds
   integer :: RndStateSeedArray(np)  ! state transition seeds
-
-  !C in param.inc integer, parameter :: dict_2d_xlowb = -7
-  !C in param.inc integer, parameter :: dict_2d_xupb = 14
-  !C in param.inc integer, parameter :: dict_2d_xsz = 100 
-  !C in param.inc integer, parameter :: dict_2d_slowb = -19
-  !C in param.inc integer, parameter :: dict_2d_supb = 23
-  !C in param.inc integer, parameter :: dict_2d_shift_sz = 200
-  !C in param.inc integer, parameter :: dict_1d_xlowb = -6
-  !C in param.inc integer, parameter :: dict_1d_xupb = 6
-  !C in param.inc integer, parameter :: dict_1d_xsz = 100
-  integer, parameter :: dict_psz=1000
-
-  !C in param.inc integer, parameter :: dictp_2d_xlowb = -3
-  !C in param.inc integer, parameter :: dictp_2d_xupb = 10
-  !integer, parameter :: dictp_2d_xsz = 100   
-  !C in param.inc integer, parameter :: dictp_2d_xsz = 200 
-  !C in param.inc integer, parameter :: dictp_2d_slowb = -3
-  !C in param.inc integer, parameter :: dictp_2d_supb = 3
-  !C in param.inc integer, parameter :: dictp_2d_shift_sz = 30 
 
   real(8), allocatable :: dict_2d(:, :, :)  
   real(8), allocatable :: dict_1d(:, :)
@@ -99,7 +78,6 @@ program double_well_test
   call draw_powerstroke_potential()
   call initRandomForce()
 
-  ! 1..sz is divided and j_begin..j_end is allocated to the rank.  
   sz = dict_2d_shift_sz
   lowerdimension_sz = (dict_psz*dict_2d_xsz)
 
@@ -126,7 +104,6 @@ program double_well_test
         call simu_force_random()
         call simu_force_powerstroke()
         call simu_update()
-!C       call simu_state_trans()
       end do
   
       !$omp parallel do default(none) &
@@ -144,7 +121,6 @@ program double_well_test
   deallocate(local_2d,sendcounts,displs)
 
 
-  ! 1..sz is divided and j_begin..j_end is allocated to the rank.
   sz = dict_1d_xsz
   lowerdimension_sz = (dict_psz)
   call set_begin_end(j_begin, j_end, local_sz, procs, sz, rank)
@@ -153,8 +129,8 @@ program double_well_test
   allocate(local_1d(dict_psz, local_sz))
   allocate(sendcounts(procs), displs(procs))
 
-  ! root process initialize sendcounts and displs for Gatherv  
   if (rank == 0) then
+     ! Scatterv/Gatherv 用の sendcounts, displs（要素数・要素オフセット）
      call set_counts_dspls(sendcounts, displs, procs, sz, lowerdimension_sz)
   end if
 
@@ -167,7 +143,6 @@ program double_well_test
       call simu_force_random()
       call simu_force_powerstroke()
       call simu_update()
-!       call simu_state_trans()
     end do
 
     !$omp parallel do default(none) &
@@ -186,53 +161,9 @@ program double_well_test
   deallocate(local_1d,sendcounts,displs)
 
 
-  dx=(dictp_2d_xupb-dictp_2d_xlowb)/real((dictp_2d_xsz-1),kind=8)
-  ds=(dictp_2d_supb-dictp_2d_slowb)/real((dictp_2d_shift_sz-1),kind=8)  
-
-  ! 1..sz is divided and j_begin..j_end is allocated to the rank.
-  sz = dictp_2d_shift_sz 
-  lowerdimension_sz = (dict_psz*dictp_2d_xsz)
-  call set_begin_end(j_begin, j_end, local_sz, procs, sz, rank)
-
-  ! allocate local array  
-  allocate(local_2d(dict_psz, dictp_2d_xsz, local_sz))
-  allocate(sendcounts(procs), displs(procs))
-
-  ! root process initialize sendcounts and displs for Gatherv    
-  if (rank == 0) then
-     call set_counts_dspls(sendcounts, displs, procs, sz, lowerdimension_sz)
-  end if
-
-  do in_s = j_begin-1, j_end-1
-    do in_x = 0, dictp_2d_xsz-1
-      call initialize(in_x,in_s,dictp_2d_xsz,2*np*(dict_1d_xsz+dict_2d_xsz*dict_2d_shift_sz))
-      state(:)=1
-      x_L(:)      = dictp_2d_xlowb+in_x*dx
-      x_S(:)= dictp_2d_slowb+in_s*ds
-      do it_in = 1, nt_in
-        call simu_force_random()
-        call simu_force_powerstroke()
-        call simu_update()
-!       call simu_state_trans()
-      end do
-
-    !$omp parallel do default(none) &
-    !$omp private(i) &
-    !$omp shared(local_2d,in_x,in_s,x_L,j_begin) 
-      do i=1, np
-        local_2d(i,in_x+1,in_s+1-j_begin+1)=x_L(i)
-      end do
-    end do 
-    write(*,*) "dictp_2d:",in_s+1," in ",dictp_2d_shift_sz    
-  end do
-
-  call MPI_Gatherv(local_2d, lowerdimension_sz*local_sz, MPI_DOUBLE_PRECISION, &
-                  dictp_2d, sendcounts, displs, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr )
-  deallocate(local_2d,sendcounts,displs)
-
   if(rank== 0) then
-    write(filename, '(A,I0,A,I0,A,I0,A,I0,A,I0,A,I0,A,I0,A)') 'dist_records/dict1000_0.5_',&
-      & time,'_',dict_2d_xlowb, '_',dict_2d_xupb,'_',dict_2d_xsz,'_',dict_2d_slowb,'_',dict_2d_supb,&
+    write(filename, '(A,I0,A,I0,A,I0,A,I0,A,I0,A,I0,A,I0,A,I0,A,I0,A)') 'dist_records/dict',dict_psz,'_0.5_',&
+      & time,'_',DELTA_SCALE,'_',dict_2d_xlowb, '_',dict_2d_xupb,'_',dict_2d_xsz,'_',dict_2d_slowb,'_',dict_2d_supb,&
       & '_',dict_2d_shift_sz,'.csv'  
     write(*,*) filename
 
@@ -240,23 +171,15 @@ program double_well_test
     write(20) dict_2d(:,:,:)
     close(20)
 
-    write(filename, '(A,I0,A,I0,A,I0,A,I0,A)') 'dist_records/dict1000_0.5_',time, &
-      & '_',dict_1d_xlowb,'_',dict_1d_xupb,'_',dict_1d_xsz,'.csv'  
+    write(filename, '(A,I0,A,I0,A,I0,A,I0,A,I0,A,I0,A)') 'dist_records/dict',dict_psz,'_0.5_',time, &
+      & '_',DELTA_SCALE,'_',dict_1d_xlowb,'_',dict_1d_xupb,'_',dict_1d_xsz,'.csv'
     write(*,*) filename
 
     open(20,file=filename, form="unformatted")
     write(20) dict_1d(:,:)
     close(20)
   
-    write(filename, '(A,I0,A,I0,A,I0,A,I0,A,I0,A,I0,A,I0,A)') 'dist_records/dict1000_0.5_',time,'_',dictp_2d_xlowb,&
-      & '_',dictp_2d_xupb,'_',dictp_2d_xsz,'_',dictp_2d_slowb,'_',dictp_2d_supb,'_', &
-      & dictp_2d_shift_sz,'.csv'  
-    write(*,*) filename
-    open(20,file=filename, form="unformatted")
-    write(20) dictp_2d(:,:,:)
-    close(20)
-
-    deallocate(dict_2d, dict_1d, dictp_2d)
+    deallocate(dict_2d, dict_1d) !, dictp_2d)
   end if 
 
   call MPI_Finalize(ierr)
@@ -336,8 +259,6 @@ contains
     end if
   end subroutine draw_powerstroke_potential
 
-  !C random seed was set as different values for each case.
-  !C in_x and in_s and shift correspond to the initial condition of x_L and x_S.
   subroutine initialize(in_x,in_s,xsz,shift)
     implicit none
     integer :: i
@@ -397,44 +318,6 @@ contains
     end do
 
   end subroutine InitRandomForce
-
-  subroutine simu_state_trans()
-    implicit none
-    real(8), parameter :: t_scale = 1.d-9   !ns to s
-    integer :: i
-    real(8) :: unifrd, rnd
-
-    !$omp parallel do default(none) &
-    !$omp private(i,rnd)&
-    !$omp shared(state,x_L,RndStateSeedArray,x_barrier,x_S)&
-    !$omp shared(attach_count,detach_pre_count,detach_pos_count)
-    do i = 1, np
-      rnd = unifrd(RndStateSeedArray(i))
-      if (state(i) == 0) then
-        if (rnd <= t_scale*a_trans*dt)  then
-          state(i) = 1
-          attach_count(i) = attach_count(i) + 1
-        end if
-      else
-        if (x_L(i) < x_barrier) then
-          if (rnd <= t_scale*d_trans*dt) then
-            state(i) = 0
-            x_L(i) = 0.d0
-            x_S(i) = 0.d0
-            detach_pre_count(i) = detach_pre_count(i)+1
-          end if
-        else
-          if (rnd <= t_scale*g_trans*dt .or. x_L(i)+x_S(i) <= x_min_detach) then
-            state(i) = 0
-            x_L(i) = 0.d0
-            x_S(i) = 0.d0
-            detach_pos_count(i) = detach_pos_count(i)+1
-          end if
-        end if
-      end if
-    end do
-
-  end subroutine simu_state_trans
 
   subroutine simu_force_random()
     implicit none
