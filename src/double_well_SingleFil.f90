@@ -19,6 +19,8 @@ program double_well_test
   real(8), parameter :: x_min_detach = -10.0
   !Transition
   real(8), parameter :: a_trans = 500, d_trans = 5000, g_trans=100  !1/s Transition rate constants
+  real(8), parameter :: gf_trans = 10.0  !unit 1/s
+  real(8), parameter :: gf_x0 = 2.0  !unit nm
   !Sarcomere (per one active filament(AF))
   real(8) :: z                                             !nm Contraction distance
   real(8) :: FzPerAF                                       !pN Contraction Force per one AF
@@ -211,7 +213,8 @@ contains
             detach_pre_count(i) = detach_pre_count(i)+1
           end if
         else
-          if (rnd <= t_scale*g_trans*dt .or. x_L(i)+x_S(i) <= x_min_detach) then
+!          if (rnd <= t_scale*g_trans*dt .or. x_L(i)+x_S(i) <= x_min_detach) then
+          if (rnd <= dt*t_scale*(g_trans+gf_trans*exp(-gf_x0*k_spring*(x(i)+x_shift(i))/KB_T))) then
             state(i) = 0
             x_L(i) = 0.d0
             x_S(i) = 0.d0
