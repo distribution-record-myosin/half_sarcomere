@@ -3,7 +3,7 @@
 This repository contains the source code used in the numerical experiments reported in the paper
   "ACCELERATION OF BIO-MOLECULE SIMULATION BASED ON OVER-DAMPED LANGEVIN EQUATION BY MONTE-CARLO METHOD"
 
-by Akihiro Fujii and Takumi Washio, submitted to ....
+by Akihiro Fujii, Ryo Yoda and Takumi Washio, submitted to ....
 
 ------------------------------------------------------------
 1. Overview
