@@ -33,7 +33,4 @@
   integer, parameter :: dictp_2d_slowb = -3
   integer, parameter :: dictp_2d_supb = 3
   integer, parameter :: dictp_2d_shift_sz = 30   
-
-  !C distribution record based method: 3 or 31
-  !C 3: only use 1d and 2d records, 31:will use precise record in addition to 1d and 2d records.
-  integer, parameter :: SampleSwitch = 3
+  
