@@ -125,12 +125,10 @@ program double_well_test
   lowerdimension_sz = (dict_psz)
   call set_begin_end(j_begin, j_end, local_sz, procs, sz, rank)
 
-  ! allocate local array
   allocate(local_1d(dict_psz, local_sz))
   allocate(sendcounts(procs), displs(procs))
 
   if (rank == 0) then
-     ! Scatterv/Gatherv 用の sendcounts, displs（要素数・要素オフセット）
      call set_counts_dspls(sendcounts, displs, procs, sz, lowerdimension_sz)
   end if
 

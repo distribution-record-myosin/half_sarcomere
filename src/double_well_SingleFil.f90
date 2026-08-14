@@ -214,7 +214,7 @@ contains
           end if
         else
 !          if (rnd <= t_scale*g_trans*dt .or. x_L(i)+x_S(i) <= x_min_detach) then
-          if (rnd <= dt*t_scale*(g_trans+gf_trans*exp(-gf_x0*k_spring*(x(i)+x_shift(i))/KB_T))) then
+          if (rnd <= dt*t_scale*(g_trans+gf_trans*exp(-gf_x0*k_spring*(x_L(i)+x_S(i))/KB_T))) then
             state(i) = 0
             x_L(i) = 0.d0
             x_S(i) = 0.d0
