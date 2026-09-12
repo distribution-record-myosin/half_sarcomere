@@ -1,7 +1,7 @@
-# Source Code for "ACCELERATION OF BIO-MOLECULE SIMULATION BASED ON OVER-DAMPED LANGEVIN EQUATION BY MONTE-CARLO METHOD"
+# Source Code for "ACCELERATED MULTISCALE SIMULATION OF MOLECULAR MOTOR DYNAMICS USING A MONTE CARLO METHOD FOR OVERDAMPED LANGEVIN SYSTEMS"
 
 This repository contains the source code used in the numerical experiments reported in the paper
-  "ACCELERATION OF BIO-MOLECULE SIMULATION BASED ON OVER-DAMPED LANGEVIN EQUATION BY MONTE-CARLO METHOD"
+  "ACCELERATED MULTISCALE SIMULATION OF MOLECULAR MOTOR DYNAMICS USING A MONTE CARLO METHOD FOR OVERDAMPED LANGEVIN SYSTEMS"
 
 by Akihiro Fujii, Ryo Yoda and Takumi Washio, submitted to ....
 
@@ -15,6 +15,11 @@ figures, and tables presented in the manuscript.
 
 The implementation is intended to support reproducibility of the results
 and to serve as a reference for further research.
+
+There are 3 codes.
+- The Euler-Maruyama method
+- The distribution record generation code
+- The proposed Monte-Carlo (MC) method using the distribution record
 
 ------------------------------------------------------------
 2. Requirements
@@ -54,43 +59,42 @@ Compile the source files:
 4. Usage
 ------------------------------------------------------------
 
-To reproduce the results of euler_maruyama method in the paper,  
+To reproduce the results of the Euler-Maruyama (EM) method in the paper,  
 run:
 ```
     export OMP_NUM_THREADS=40;                                     
     ./euler_maruyama      
 ```
-In Euler Maruyama method, time step width is 0.5 ns. In order to shorten the execution time, the simulation time length is set to 0.02 sec.
+In Euler-Maruyama method, time step width is 0.5 ns. In order to shorten the execution time, the simulation time length is set to 0.02 sec.
 
-To prepare distribution records in the paper,  
+To prepare distribution records for the MC method,  
 run:
 ```
     export OMP_NUM_THREADS=10
     mpirun -np 10 ./record_gen
 ```
 Distribution records are stored in the dist_records directory.
-The distribution of myosin behavior is measured over 1,000 trials for each initial condition.
+The distribution of myosin behavior is measured over 15,000 trials for each initial condition.
 Parallelism is implemented using multi-threading for trials and multi-processing for the various initial conditions.
 
-
-To reproduce the results of distribution record based method in the paper,  
+To reproduce the results of the MC method in the paper,  
 run:
 ```
     export OMP_NUM_THREADS=40
     ./montecalro_w_record
 ```
-In distribution record based method, time step width is set to be 1000 ns with distribution records.
+In the MC method, time step width is set to be 1000 ns with distribution records.
 The simulation time length is set to 1.0 sec.
 
-The number of threads and processes can be adjusted to suit your computing environment.
+The number of threads and processes must be adjusted to suit your computing environment.
 
 ------------------------------------------------------------
 5. Reproducing the Results in the Paper
 ------------------------------------------------------------
 
-- trans.csv has the reslts of each output time step.
-    9-th column data corresponds to the z-line displacement.
-  - Be careful not to overwrite the output file, as the file name is the same for both Euler Maruyama method and distribution record based method.
+- After execution of EM method or MC method, trans.csv stores the results of each output time step(0.1 ms).
+    9-th column corresponds to the Z-line displacement.
+  - Be careful not to overwrite the output file, as the file name is the same for both EM method and the MC method.
 - To make a graph of z-line displacement "z_disp.png" from trans.csv,  
   run: 
 ```
