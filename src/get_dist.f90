@@ -12,11 +12,7 @@ program get_dist
   read(5,*) it_out
 
 
-!  open(11,file="fdic_0.5_1000/Data_2_31_np_40320_-3_3_300.bin",form="unformatted")
-!  open(11,file="fdic_0.5_1000/Data_2_3_np_40320_-3_3_300.bin",form="unformatted")
   open(11,file="data.bin",form="unformatted")
-!  open(11,file="fdic_0.5_1000/bData_2_31_np_40320_-3_3_300.bin",form="unformatted")
-!  open(11,file="data.bin",form="unformatted")
 100 read(11) it
   read(11) z
   read(11) state

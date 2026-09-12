@@ -101,19 +101,17 @@ program double_well_test
     else
       open(20,file="trans.csv",position="append")
       open(21,file="data.bin",position="append",form="unformatted")
-   end if
+    end if
    
     write(20,'(i8,10e13.5)') it_out,1.d-9*total_time,dble(npre)/dble(np),dble(npos)/dble(np),dble(ndet)/dble(np),&
        NattachPerMol,Ndeatch_prePerMol,Ndeatch_posPerMol,z,FzPerAF
     close(20)
-    if(mod(it_out,50)==0) then
-      write(21) it_out 
-      write(21) z 
-      write(21) state 
-      write(21) x_L 
-      write(21) x_S 
-    end if 
-   close(21)
+    write(21) it_out 
+    write(21) z 
+    write(21) state 
+    write(21) x_L 
+    write(21) x_S 
+    close(21)
   end do
   
 contains
