@@ -141,8 +141,8 @@ The value of `time` in `src/param.inc` sets the time step size in nano-seconds:
 
 ### 5.4. Data Analysis and Visualization
 
-- **Output File:** After executing either the EM or MC method, the results for each output time step ($0.1\, ms$) are stored in `trans.csv`.
-- **Data Structure:** The 9th and 10th columns correspond to the Z-line displacement and contraction force per actin filament, respectively.
+- **Output File:** After executing either the EM or MC method, the results for every output time step ($0.1\, ms$) are stored in `trans.csv`. States of all myosins at all output time stesps are also stored in `data.bin`.
+- **Data Structure:** The 9th and 10th columns of `trans.csv` correspond to the half-sarcomere shortening length and contraction force per actin filament, respectively.
 
   - Be careful not to overwrite the output file, as the file name is the same for both EM method and the MC method.
 - To make a graph of half-sarcomere shortening length "hssl.png" from trans.csv,
@@ -150,17 +150,17 @@ The value of `time` in `src/param.inc` sets the time step size in nano-seconds:
 ```
    python3 hssl.py
 ```
-- To make a graph "contract_force.png" of contraction force per actin filament from trans.csv
+- To make a graph of contraction force per actin filament "contract_force.png" from trans.csv,
   run: 
 ```
    python3 contract_force.py
 ```
-- To make a graph "dist.png" of distribution of the states of myosins bound to actin at 100 $\times 0.1\, ms$ from data.bin,  
+- To make a graph "dist.png" of distribution of the states of bound myosins at $ 100 \times 0.1\, ms$ from data.bin,
   run: 
 ```
-   # states of myosins bound to actin are recorded 
-   # in dist.csv 
+   # states of myosins bound to actin are output in dist.csv 
    echo "100" | ./get_dist
+   # make a graph from dist.csv
    python3 dist.py
 ```
 
@@ -174,5 +174,4 @@ See the LICENSE file for details.
 ## 7. Contact
 
 For questions or issues related to this code, please contact:
-- **Name / Email:** Akihiro Fujii / fujii@cc.kogakuin.ac.jp
 - **Paper Authors:** Akihiro Fujii, Ryo Yoda, and Takumi Washio
