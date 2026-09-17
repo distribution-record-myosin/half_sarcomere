@@ -3,7 +3,7 @@
 This repository contains the source code used in the numerical experiments reported in the paper
   "ACCELERATED MULTISCALE SIMULATION OF MOLECULAR MOTOR DYNAMICS USING A MONTE CARLO METHOD FOR OVERDAMPED LANGEVIN SYSTEMS"
 
-by Akihiro Fujii, Ryo Yoda and Takumi Washio, submitted to the SIAM journal on Multiscale Modeling and Simulation, 
+by Akihiro Fujii, Ryo Yoda and Takumi Washio, submitted to the SIAM journal on Multiscale Modeling and Simulation. 
 
 ## 1. Overview
 This code implements the numerical methods and algorithms proposed in the above-mentioned paper. It was used to generate all numerical results, figures, and tables presented in the manuscript. 
